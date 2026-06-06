@@ -61,6 +61,21 @@
       z-index: 20;
       pointer-events: none;
     }
+    #fullscreen-btn {
+      position: absolute;
+      top: 12px; right: 12px;
+      z-index: 20;
+      background: rgba(10,10,30,0.75);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    #fullscreen-btn:hover { background: rgba(40,40,80,0.95); }
   </style>
 </head>
 <body>
@@ -70,6 +85,7 @@
 <img id="llama" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="llama">
 <div id="label"></div>
 <div id="title">Lima Llama 🦙</div>
+<button id="fullscreen-btn" title="Vollbild">⛶</button>
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -139,23 +155,11 @@ function stopMelody() {
   melodyTimer = null;
 }
 
+const screamAudio = new Audio('166625__jzazvurek__childs-scream-8.wav');
+
 function playScream() {
-  const a = ac();
-  [[350, 1400, 900, 500, 0.28, 1.4, 'sawtooth'],
-   [700, 2800, 1800, null, 0.08, 0.8, 'square']
-  ].forEach(([f0, f1, f2, f3, vol, dur, type]) => {
-    const osc = a.createOscillator(), gain = a.createGain();
-    osc.connect(gain); gain.connect(a.destination);
-    osc.type = type;
-    osc.frequency.setValueAtTime(f0, a.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(f1, a.currentTime + 0.25);
-    osc.frequency.exponentialRampToValueAtTime(f2, a.currentTime + 0.65);
-    if (f3) osc.frequency.exponentialRampToValueAtTime(f3, a.currentTime + 1.1);
-    gain.gain.setValueAtTime(vol, a.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
-    osc.start(a.currentTime);
-    osc.stop(a.currentTime + dur + 0.01);
-  });
+  screamAudio.currentTime = 0;
+  screamAudio.play().catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -355,6 +359,24 @@ requestAnimationFrame(render);
 // BOOT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('click', () => ac().resume(), { once: true });
+
+// Fullscreen
+const fsBtn = document.getElementById('fullscreen-btn');
+fsBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+    fsBtn.textContent = '✕';
+    fsBtn.title = 'Vollbild beenden';
+  } else {
+    document.exitFullscreen();
+  }
+});
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    fsBtn.textContent = '⛶';
+    fsBtn.title = 'Vollbild';
+  }
+});
 
 map.on('load', async () => {
   await loadLocations();
