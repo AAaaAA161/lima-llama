@@ -382,12 +382,13 @@ requestAnimationFrame(render);
 // BOOT
 // ═══════════════════════════════════════════════════════════════
 const startScreen = document.getElementById('start-screen');
-let mapReady      = false;
+let mapReady       = false;
 let locationsReady = false;
-let started       = false;
+let userClicked    = false;
+let started        = false;
 
 function tryStart() {
-  if (started || !mapReady || !locationsReady) return;
+  if (started || !mapReady || !locationsReady || !userClicked) return;
   started = true;
   ac().resume();
   startScreen.classList.add('hidden');
@@ -399,7 +400,7 @@ function tryStart() {
   startHop();
 }
 
-startScreen.addEventListener('click', tryStart);
+startScreen.addEventListener('click', () => { userClicked = true; tryStart(); });
 
 // Fullscreen
 const fsBtn = document.getElementById('fullscreen-btn');
