@@ -246,12 +246,11 @@ function startHop() {
   phase    = PHASE.HOPPING;
   startMelody();
 
-  map.flyTo({
-    center: [(from.lng + to.lng) / 2, (from.lat + to.lat) / 2],
-    zoom: Math.max(3, map.getZoom() * 0.92),
-    duration: hopDur * 0.92,
-    essential: true
-  });
+  // Zoom so the jump distance fits comfortably on screen.
+  // map.setCenter() in the render loop keeps the llama always visible.
+  const dist = Math.sqrt(dlng*dlng + dlat*dlat);
+  const zoom = Math.max(2, Math.min(8, Math.log2(400 / Math.max(dist, 0.1))));
+  map.easeTo({ zoom, duration: 600, essential: true });
 }
 
 function onArrival() {
@@ -292,6 +291,8 @@ function render(now) {
     const t = Math.min((now - hopStart) / hopDur, 1);
     const lng = lerp(hopFromLng, hopToLng, t);
     const lat = lerp(hopFromLat, hopToLat, t);
+    // Follow the llama – map center tracks current position every frame
+    map.setCenter([lng, lat]);
     const [sx, sy] = project(lng, lat);
     scrX = sx;
     scrY = sy - Math.sin(Math.PI * t) * ARC_H;
