@@ -175,15 +175,35 @@ const MELODY = [523.25, 659.25, 783.99, 880, 1046.5, 880, 783.99, 659.25, 523.25
 let melodyIdx   = 0;
 let melodyTimer = null;
 
-function playNote(freq, dur = 0.14, type = 'sine', vol = 0.12) {
-  const a = ac();
-  const osc = a.createOscillator(), gain = a.createGain();
-  osc.connect(gain); gain.connect(a.destination);
-  osc.type = type;
+function playNote(freq) {
+  const a   = ac();
+  const dur = 0.55;
+  const vol = 0.005;
+
+  // Vibrato LFO
+  const lfo  = a.createOscillator();
+  const lfoG = a.createGain();
+  lfo.frequency.value = 5.5;
+  lfoG.gain.value = 4; // ±4 Hz vibrato depth
+  lfo.connect(lfoG);
+
+  const osc  = a.createOscillator();
+  const gain = a.createGain();
+  lfoG.connect(osc.frequency);
+  osc.connect(gain);
+  gain.connect(a.destination);
+
+  osc.type = 'sine';
   osc.frequency.setValueAtTime(freq, a.currentTime);
-  gain.gain.setValueAtTime(vol, a.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+  // Soft attack, long sustain, fade out
+  gain.gain.setValueAtTime(0, a.currentTime);
+  gain.gain.linearRampToValueAtTime(vol, a.currentTime + 0.08);
+  gain.gain.setValueAtTime(vol, a.currentTime + dur - 0.1);
+  gain.gain.linearRampToValueAtTime(0, a.currentTime + dur);
+
+  lfo.start(a.currentTime);
   osc.start(a.currentTime);
+  lfo.stop(a.currentTime + dur + 0.01);
   osc.stop(a.currentTime + dur + 0.01);
 }
 
@@ -192,15 +212,20 @@ function startMelody() {
   melodyTimer = setInterval(() => {
     playNote(MELODY[melodyIdx % MELODY.length]);
     melodyIdx++;
-  }, 230);
+  }, 420); // slower, more legato
+  hummingAudio.currentTime = 0;
+  hummingAudio.play().catch(() => {});
 }
 
 function stopMelody() {
   clearInterval(melodyTimer);
   melodyTimer = null;
+  hummingAudio.pause();
 }
 
-const screamAudio = new Audio('166625__jzazvurek__childs-scream-8.wav');
+const screamAudio  = new Audio('166625__jzazvurek__childs-scream-8.wav');
+const hummingAudio = new Audio('humming.wav');
+hummingAudio.loop = true;
 
 function playScream() {
   screamAudio.currentTime = 0;
