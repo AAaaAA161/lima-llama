@@ -68,16 +68,37 @@
       z-index: 100;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      cursor: pointer;
       transition: opacity 0.5s;
     }
+    #start-screen.ready { cursor: pointer; }
     #start-screen.hidden { opacity: 0; pointer-events: none; }
     #start-screen img { height: 160px; width: auto; margin-bottom: 28px;
       filter: drop-shadow(0 4px 24px rgba(0,0,0,0.5)); }
     #start-screen h1 { color: #fff; font-size: 28px; letter-spacing: 4px;
       text-transform: uppercase; margin-bottom: 10px; }
-    #start-screen p  { color: rgba(255,255,255,0.55); font-size: 14px;
-      letter-spacing: 2px; }
+    #start-hint {
+      color: rgba(255,255,255,0.5); font-size: 14px;
+      letter-spacing: 2px; transition: all 0.4s;
+    }
+    #start-hint.ready {
+      color: #fff; font-size: 20px; letter-spacing: 4px;
+      text-shadow: 0 0 24px rgba(255,255,255,0.5);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+    #progress-bar {
+      width: 200px; height: 3px; margin-top: 22px;
+      background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden;
+      transition: opacity 0.4s;
+    }
+    #progress-bar.done { opacity: 0; pointer-events: none; }
+    #progress-fill {
+      height: 100%; width: 0%; background: rgba(255,255,255,0.6);
+      border-radius: 2px; transition: width 0.3s;
+    }
 
     #fullscreen-btn {
       position: absolute;
@@ -104,7 +125,8 @@
 <div id="start-screen">
   <img src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lima Llama">
   <h1>Lima Llama</h1>
-  <p>Klicken zum Starten</p>
+  <p id="start-hint">Lade Karte …</p>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
 </div>
 <div id="label"></div>
 <div id="title">Lima Llama 🦙</div>
@@ -321,7 +343,7 @@ function render(now) {
   // Anchor: bottom-center of image = feet at (scrX, scrY)
   llamaEl.style.left    = (scrX - LLAMA_W / 2 + ox) + 'px';
   llamaEl.style.top     = (scrY - LLAMA_H + oy) + 'px';
-  llamaEl.style.transform = `scaleX(${facingRight ? 1 : -1})`;
+  llamaEl.style.transform = `scaleX(${facingRight ? -1 : 1})`;
   llamaEl.style.display = 'block';
 
   // Shadow ellipse (canvas)
@@ -382,26 +404,59 @@ requestAnimationFrame(render);
 // ═══════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════
-const startScreen = document.getElementById('start-screen');
-let mapReady       = false;
-let locationsReady = false;
+const startScreen  = document.getElementById('start-screen');
+const startHint    = document.getElementById('start-hint');
+const progressFill = document.getElementById('progress-fill');
 let userClicked    = false;
+let preloadDone    = false;
 let started        = false;
 
 function tryStart() {
-  if (started || !mapReady || !locationsReady || !userClicked) return;
+  if (started || !preloadDone || !userClicked) return;
   started = true;
   ac().resume();
   startScreen.classList.add('hidden');
   setTimeout(() => { startScreen.style.display = 'none'; }, 500);
-  const first = locations[0];
-  map.setCenter([first.lng, first.lat]);
-  map.setZoom(4);
-  [scrX, scrY] = project(first.lng, first.lat);
   startHop();
 }
 
-startScreen.addEventListener('click', () => { userClicked = true; tryStart(); });
+startScreen.addEventListener('click', () => {
+  if (!preloadDone) return; // ignore clicks while loading
+  userClicked = true;
+  tryStart();
+});
+
+// Visit every location silently to warm up the tile cache
+async function preloadTiles() {
+  const hint = startHint;
+  const fill = progressFill;
+
+  function waitIdle() {
+    return new Promise(resolve => {
+      const t = setTimeout(resolve, 1500); // max wait per location
+      map.once('idle', () => { clearTimeout(t); resolve(); });
+    });
+  }
+
+  for (let i = 0; i < locations.length; i++) {
+    const loc = locations[i];
+    map.jumpTo({ center: [loc.lng, loc.lat], zoom: 5 });
+    await waitIdle();
+    fill.style.width = ((i + 1) / locations.length * 100) + '%';
+  }
+
+  // Return to first location
+  map.jumpTo({ center: [locations[0].lng, locations[0].lat], zoom: 4 });
+  [scrX, scrY] = project(locations[0].lng, locations[0].lat);
+  await waitIdle();
+
+  preloadDone = true;
+  hint.textContent = 'Klicken zum Starten';
+  hint.classList.add('ready');
+  document.getElementById('progress-bar').classList.add('done');
+  startScreen.classList.add('ready');
+  tryStart();
+}
 
 // Fullscreen
 const fsBtn = document.getElementById('fullscreen-btn');
@@ -424,9 +479,7 @@ document.addEventListener('fullscreenchange', () => {
 map.on('load', async () => {
   await loadLocations();
   if (!locations.length) return;
-  locationsReady = true;
-  mapReady = true;
-  tryStart();
+  preloadTiles();
 });
 </script>
 </body>
