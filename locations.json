@@ -1,12 +1,10 @@
 [
-  { "name": "Lima, Peru",              "lng": -77.0428, "lat": -12.0464 },
-  { "name": "Cusco, Peru",             "lng": -71.9675, "lat": -13.5320 },
-  { "name": "Machu Picchu, Peru",      "lng": -72.5450, "lat": -13.1631 },
-  { "name": "La Paz, Bolivien",        "lng": -68.1193, "lat": -16.5000 },
-  { "name": "Buenos Aires, Argentinien", "lng": -58.3816, "lat": -34.6037 },
-  { "name": "Santiago, Chile",         "lng": -70.6693, "lat": -33.4489 },
-  { "name": "Rio de Janeiro, Brasilien", "lng": -43.1729, "lat": -22.9068 },
-  { "name": "Bogotá, Kolumbien",       "lng": -74.0721, "lat":   4.7110 },
-  { "name": "Cartagena, Kolumbien",    "lng": -75.5144, "lat":  10.3910 },
-  { "name": "Quito, Ecuador",          "lng": -78.4678, "lat":  -0.1807 }
+  { "name": "Salzburg, Österreich",     "lng":  13.0550, "lat":  47.8095 },
+  { "name": "Braunau am Inn, Österreich","lng":  13.0333, "lat":  48.2500 },
+  { "name": "Lübeck, Deutschland",       "lng":  10.6866, "lat":  53.8655 },
+  { "name": "Salzburg, Österreich",     "lng":  13.0550, "lat":  47.8095 },
+  { "name": "Lima, Peru",               "lng": -77.0428, "lat": -12.0464 },
+  { "name": "Mexico City, Mexiko",      "lng": -99.1332, "lat":  19.4326 },
+  { "name": "Ried im Innkreis, Österreich", "lng": 13.4833, "lat": 48.2100 },
+  { "name": "Bangkok, Thailand",        "lng": 100.5018, "lat":  13.7563 }
 ]
