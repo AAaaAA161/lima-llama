@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lima Llama 🦙</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <script src="config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; font-family: 'Courier New', monospace; }
+    #map { width: 100%; height: 100%; }
+
+    /* Canvas for shadow + speech bubble only */
+    #overlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* The llama GIF */
+    #llama {
+      position: absolute;
+      pointer-events: none;
+      z-index: 6;
+      height: 130px;
+      width: auto;
+      display: none;
+      transform-origin: bottom center;
+      image-rendering: auto;
+    }
+
+    #label {
+      position: absolute;
+      bottom: 36px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 10, 30, 0.88);
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 28px;
+      font-size: 17px;
+      letter-spacing: 1px;
+      z-index: 20;
+      opacity: 0;
+      transition: opacity 0.4s;
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.15);
+      pointer-events: none;
+    }
+    #label.show { opacity: 1; }
+
+    #title {
+      position: absolute;
+      top: 16px; left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.65);
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      z-index: 20;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<canvas id="overlay"></canvas>
+<img id="llama" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="llama">
+<div id="label"></div>
+<div id="title">Lima Llama 🦙</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// MAPBOX
+// ═══════════════════════════════════════════════════════════════
+mapboxgl.accessToken = window.MAPBOX_TOKEN;
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/outdoors-v12',
+  center: [-65, -15],
+  zoom: 3,
+  projection: 'mercator'
+});
+
+// ═══════════════════════════════════════════════════════════════
+// CANVAS (shadow + speech bubble only)
+// ═══════════════════════════════════════════════════════════════
+const overlay = document.getElementById('overlay');
+const ctx     = overlay.getContext('2d');
+const llamaEl = document.getElementById('llama');
+
+function resizeOverlay() {
+  const dpr = window.devicePixelRatio || 1;
+  overlay.width  = window.innerWidth  * dpr;
+  overlay.height = window.innerHeight * dpr;
+  ctx.scale(dpr, dpr);
+}
+resizeOverlay();
+window.addEventListener('resize', resizeOverlay);
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════════════════════════
+let audioCtx = null;
+function ac() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+const MELODY = [523.25, 659.25, 783.99, 880, 1046.5, 880, 783.99, 659.25, 523.25, 392, 440, 523.25];
+let melodyIdx   = 0;
+let melodyTimer = null;
+
+function playNote(freq, dur = 0.14, type = 'sine', vol = 0.12) {
+  const a = ac();
+  const osc = a.createOscillator(), gain = a.createGain();
+  osc.connect(gain); gain.connect(a.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, a.currentTime);
+  gain.gain.setValueAtTime(vol, a.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+  osc.start(a.currentTime);
+  osc.stop(a.currentTime + dur + 0.01);
+}
+
+function startMelody() {
+  if (melodyTimer) return;
+  melodyTimer = setInterval(() => {
+    playNote(MELODY[melodyIdx % MELODY.length]);
+    melodyIdx++;
+  }, 230);
+}
+
+function stopMelody() {
+  clearInterval(melodyTimer);
+  melodyTimer = null;
+}
+
+function playScream() {
+  const a = ac();
+  [[350, 1400, 900, 500, 0.28, 1.4, 'sawtooth'],
+   [700, 2800, 1800, null, 0.08, 0.8, 'square']
+  ].forEach(([f0, f1, f2, f3, vol, dur, type]) => {
+    const osc = a.createOscillator(), gain = a.createGain();
+    osc.connect(gain); gain.connect(a.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, a.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(f1, a.currentTime + 0.25);
+    osc.frequency.exponentialRampToValueAtTime(f2, a.currentTime + 0.65);
+    if (f3) osc.frequency.exponentialRampToValueAtTime(f3, a.currentTime + 1.1);
+    gain.gain.setValueAtTime(vol, a.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+    osc.start(a.currentTime);
+    osc.stop(a.currentTime + dur + 0.01);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOCATIONS
+// ═══════════════════════════════════════════════════════════════
+let locations = [];
+let locIdx    = 0;
+
+async function loadLocations() {
+  const res = await fetch('locations.json');
+  locations = await res.json();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANIMATION STATE
+// ═══════════════════════════════════════════════════════════════
+const PHASE = { IDLE: 0, HOPPING: 1, SCREAMING: 2 };
+
+let phase       = PHASE.IDLE;
+let facingRight = true;
+
+let hopStart    = 0, hopDur = 0;
+let hopFromLng  = 0, hopFromLat = 0;
+let hopToLng    = 0, hopToLat   = 0;
+const ARC_H     = 100;
+
+let screamStart = 0;
+const SCREAM_DUR = 3200;
+
+let bubbleText   = '';
+const BUBBLE_TGT = 'AAAAAAH!';
+let bubbleTimer  = 0;
+
+let scrX = 0, scrY = 0;
+
+const label = document.getElementById('label');
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function project(lng, lat) { const p = map.project([lng, lat]); return [p.x, p.y]; }
+
+function showLabel(name) {
+  label.textContent = '📍 ' + name;
+  label.classList.add('show');
+  setTimeout(() => label.classList.remove('show'), 3500);
+}
+
+// ── hop ────────────────────────────────────────────────────────
+function startHop() {
+  if (locations.length < 2) return;
+  const from = locations[locIdx];
+  const to   = locations[(locIdx + 1) % locations.length];
+
+  hopFromLng = from.lng; hopFromLat = from.lat;
+  hopToLng   = to.lng;   hopToLat   = to.lat;
+  facingRight = to.lng >= from.lng;
+
+  const dlng = to.lng - from.lng, dlat = to.lat - from.lat;
+  hopDur = Math.min(6000, Math.max(2000, Math.sqrt(dlng*dlng + dlat*dlat) * 85));
+
+  hopStart = performance.now();
+  phase    = PHASE.HOPPING;
+  startMelody();
+
+  map.flyTo({
+    center: [(from.lng + to.lng) / 2, (from.lat + to.lat) / 2],
+    zoom: Math.max(3, map.getZoom() * 0.92),
+    duration: hopDur * 0.92,
+    essential: true
+  });
+}
+
+function onArrival() {
+  locIdx = (locIdx + 1) % locations.length;
+  phase  = PHASE.SCREAMING;
+  screamStart = performance.now();
+  bubbleText  = '';
+  bubbleTimer = 0;
+  stopMelody();
+  playScream();
+  showLabel(locations[locIdx].name);
+  const loc = locations[locIdx];
+  map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 1000, essential: true });
+  setTimeout(() => { phase = PHASE.IDLE; startHop(); }, SCREAM_DUR + 200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER LOOP
+// ═══════════════════════════════════════════════════════════════
+let lastT = 0;
+
+// Llama image dimensions (GIF: 378x498, displayed at height=130px)
+const LLAMA_H  = 130;
+const LLAMA_W  = Math.round(130 * 378 / 498); // ≈ 99px
+
+function render(now) {
+  requestAnimationFrame(render);
+  const dt = now - lastT;
+  lastT = now;
+
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+  if (!locations.length || !map.isStyleLoaded()) return;
+
+  let shake = 0;
+
+  if (phase === PHASE.HOPPING) {
+    const t = Math.min((now - hopStart) / hopDur, 1);
+    const lng = lerp(hopFromLng, hopToLng, t);
+    const lat = lerp(hopFromLat, hopToLat, t);
+    const [sx, sy] = project(lng, lat);
+    scrX = sx;
+    scrY = sy - Math.sin(Math.PI * t) * ARC_H;
+    if (t >= 1) onArrival();
+
+  } else if (phase === PHASE.SCREAMING) {
+    const loc = locations[locIdx];
+    [scrX, scrY] = project(loc.lng, loc.lat);
+    shake = 4;
+    bubbleTimer += dt;
+    if (bubbleTimer > 80 && bubbleText.length < BUBBLE_TGT.length) {
+      bubbleText += BUBBLE_TGT[bubbleText.length];
+      bubbleTimer = 0;
+    }
+
+  } else {
+    const loc = locations[locIdx];
+    [scrX, scrY] = project(loc.lng, loc.lat);
+  }
+
+  // Random shake offset
+  const ox = shake ? (Math.random() - 0.5) * shake * 2 : 0;
+  const oy = shake ? (Math.random() - 0.5) * shake     : 0;
+
+  // Position llama GIF
+  // Anchor: bottom-center of image = feet at (scrX, scrY)
+  llamaEl.style.left    = (scrX - LLAMA_W / 2 + ox) + 'px';
+  llamaEl.style.top     = (scrY - LLAMA_H + oy) + 'px';
+  llamaEl.style.transform = `scaleX(${facingRight ? 1 : -1})`;
+  llamaEl.style.display = 'block';
+
+  // Shadow ellipse (canvas)
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.ellipse(scrX + ox * 0.5, scrY + 3, 28, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Speech bubble during scream
+  if (phase === PHASE.SCREAMING && bubbleText.length > 0) {
+    // Head is roughly at top-center of the GIF
+    const dir  = facingRight ? 1 : -1;
+    const headX = scrX + dir * 38;
+    const headY = scrY - LLAMA_H + 28;  // top area of GIF
+
+    const bw = bubbleText.length * 11 + 24;
+    const bh = 32;
+    const bx = headX + dir * 10;
+    const by = headY - bh - 8;
+
+    ctx.save();
+
+    // Bubble
+    ctx.fillStyle   = '#FFFDE4';
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 8);
+    ctx.fill(); ctx.stroke();
+
+    // Tail pointing to head
+    const tailTipX = headX + dir * 4;
+    const tailBaseL = bx + (facingRight ? 6 : bw - 14);
+    const tailBaseR = tailBaseL + 8;
+    ctx.beginPath();
+    ctx.moveTo(tailBaseL, by + bh);
+    ctx.lineTo(tailTipX,  by + bh + 14);
+    ctx.lineTo(tailBaseR, by + bh);
+    ctx.fillStyle = '#FFFDE4';
+    ctx.fill();
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Text
+    ctx.fillStyle = '#B71C1C';
+    ctx.font = 'bold 15px "Courier New", monospace';
+    ctx.fillText(bubbleText, bx + 12, by + 21);
+
+    ctx.restore();
+  }
+}
+
+requestAnimationFrame(render);
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('click', () => ac().resume(), { once: true });
+
+map.on('load', async () => {
+  await loadLocations();
+  if (!locations.length) return;
+  const first = locations[0];
+  map.setCenter([first.lng, first.lat]);
+  map.setZoom(4);
+  [scrX, scrY] = project(first.lng, first.lat);
+  setTimeout(startHop, 1500);
+});
+</script>
+</body>
+</html>
