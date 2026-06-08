@@ -1,10 +1,12 @@
 [
-  { "name": "Salzburg, Österreich",     "lng":  13.0550, "lat":  47.8095 },
-  { "name": "Braunau am Inn, Österreich","lng":  13.0333, "lat":  48.2500 },
-  { "name": "Lübeck, Deutschland",       "lng":  10.6866, "lat":  53.8655 },
-  { "name": "Salzburg, Österreich",     "lng":  13.0550, "lat":  47.8095 },
-  { "name": "Lima, Peru",               "lng": -77.0428, "lat": -12.0464 },
-  { "name": "Mexico City, Mexiko",      "lng": -99.1332, "lat":  19.4326 },
-  { "name": "Ried im Innkreis, Österreich", "lng": 13.4833, "lat": 48.2100 },
-  { "name": "Manila, Philippinen",         "lng": 120.9842, "lat":  14.5995 }
+  { "name": "Salzburg, Österreich",          "lng":  13.0550, "lat":  47.8095, "scream": "1948" },
+  { "name": "Braunau am Inn, Österreich",    "lng":  13.0333, "lat":  48.2500, "scream": "1975" },
+  { "name": "Lübeck, Deutschland",           "lng":  10.6866, "lat":  53.8655, "scream": "1975" },
+  { "name": "Salzburg, Österreich",          "lng":  13.0550, "lat":  47.8095, "scream": "1976" },
+  { "name": "Lima, Peru",                    "lng": -77.0428, "lat": -12.0464, "scream": "1976" },
+  { "name": "Mexico City, Mexiko",           "lng": -99.1332, "lat":  19.4326, "scream": "1983" },
+  { "name": "Ried im Innkreis, Österreich",  "lng":  13.4833, "lat":  48.2100, "scream": "1984" },
+  { "name": "Manila, Philippinen",           "lng": 120.9842, "lat":  14.5995, "scream": "1991" },
+  { "name": "Salzburg, Österreich",          "lng":  13.0550, "lat":  47.8095, "scream": "1991" },
+  { "name": "Salzburg, Österreich",          "lng":  13.0550, "lat":  47.8095, "scream": "2019" }
 ]

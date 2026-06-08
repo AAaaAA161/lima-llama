@@ -29,6 +29,8 @@
       display: none;
       transform-origin: bottom center;
       image-rendering: auto;
+      opacity: 1;
+      /* opacity driven by JS render loop – no CSS transition */
     }
 
     #label {
@@ -76,6 +78,15 @@
       filter: drop-shadow(0 4px 24px rgba(0,0,0,0.5)); }
     #start-screen h1 { color: #fff; font-size: 28px; letter-spacing: 4px;
       text-transform: uppercase; margin-bottom: 10px; }
+    #start-desc {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+      line-height: 1.7;
+      letter-spacing: 0.5px;
+      max-width: 380px;
+      text-align: center;
+      margin-bottom: 22px;
+    }
     #start-hint {
       color: rgba(255,255,255,0.5); font-size: 14px;
       letter-spacing: 2px; transition: all 0.4s;
@@ -125,6 +136,7 @@
 <div id="start-screen">
   <img src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lima Llama">
   <h1>Lima Llama</h1>
+  <p id="start-desc">LIMA LLAMA is a world map on which a llama hops between various locations where Günther was arrested, expelled from a country, or became a matter of official record in some way.</p>
   <p id="start-hint">Lade Karte …</p>
   <div id="progress-bar"><div id="progress-fill"></div></div>
 </div>
@@ -143,7 +155,8 @@ const map = new mapboxgl.Map({
   style: 'mapbox://styles/mapbox/outdoors-v12',
   center: [-65, -15],
   zoom: 3,
-  projection: 'mercator'
+  projection: 'mercator',
+  interactive: false
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -225,11 +238,18 @@ function stopMelody() {
 
 const screamAudio  = new Audio('166625__jzazvurek__childs-scream-8.wav');
 const hummingAudio = new Audio('humming.wav');
-hummingAudio.loop = true;
+hummingAudio.loop  = true;
+const bellAudio    = new Audio('bell.mp3');
+bellAudio.volume   = 0.1;
 
 function playScream() {
   screamAudio.currentTime = 0;
   screamAudio.play().catch(() => {});
+}
+
+function playBell() {
+  bellAudio.currentTime = 0;
+  bellAudio.play().catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -260,10 +280,21 @@ let screamStart = 0;
 const SCREAM_DUR = 3200;
 
 let bubbleText   = '';
-const BUBBLE_TGT = 'AAAAAAH!';
+let bubbleTgt    = 'AAAAAAH!';
 let bubbleTimer  = 0;
 
 let scrX = 0, scrY = 0;
+
+let showCross = false;
+let crossX = 0, crossY = 0;
+
+// JS-driven fade (keeps llama, shadow and bubble perfectly in sync)
+let llamaFadeAlpha = 1;
+let fadeOutActive  = false;
+let fadeInActive   = false;
+let fadeStartTime  = 0;
+const FADE_OUT_DUR = 1000;
+const FADE_IN_DUR  = 900;
 
 const label = document.getElementById('label');
 
@@ -305,13 +336,148 @@ function onArrival() {
   phase  = PHASE.SCREAMING;
   screamStart = performance.now();
   bubbleText  = '';
+  bubbleTgt   = locations[locIdx].scream || 'AAAAAAH!';
   bubbleTimer = 0;
   stopMelody();
-  playScream();
-  showLabel(locations[locIdx].name);
-  const loc = locations[locIdx];
+
+  const loc    = locations[locIdx];
+  const isLast = locIdx === locations.length - 1;
+
+  showLabel(loc.name);
   map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 1000, essential: true });
-  setTimeout(() => { phase = PHASE.IDLE; startHop(); }, SCREAM_DUR + 200);
+
+  if (isLast) {
+    // Finale: bell toll, llama fades, cross appears, 5s pause, restart
+    playBell();
+
+    // After bubble types in (~1.5s): start JS-driven fade + show cross
+    setTimeout(() => {
+      crossX = scrX;
+      crossY = scrY;
+      showCross    = true;
+      fadeOutActive = true;
+      fadeInActive  = false;
+      fadeStartTime = performance.now();
+    }, 1500);
+
+    // After fade (1s) + 5s pause → restart at first location
+    setTimeout(() => {
+      showCross    = false;
+      phase        = PHASE.IDLE;
+      bubbleText   = '';
+      locIdx       = 0;
+      llamaFadeAlpha = 0;
+      fadeOutActive  = false;
+      const first = locations[0];
+      map.flyTo({ center: [first.lng, first.lat], zoom: 5, duration: 1200, essential: true });
+      setTimeout(() => {
+        fadeInActive  = true;
+        fadeStartTime = performance.now();
+        setTimeout(showFirstArrival, FADE_IN_DUR + 300);
+      }, 1200);
+    }, 1500 + FADE_OUT_DUR + 5000); // ~7.5s total
+
+  } else {
+    playScream();
+    setTimeout(() => { phase = PHASE.IDLE; startHop(); }, SCREAM_DUR + 200);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GRAVE CROSS
+// ═══════════════════════════════════════════════════════════════
+function drawGraveCross(ctx, cx, cy, alpha) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  const vw   = 13;          // vertical bar width
+  const hh   = 12;          // horizontal bar height
+  const top  = cy - 60;     // top of vertical bar
+  const bot  = cy + 2;      // bottom of vertical bar
+  const armL = cx - 30;     // left end of crossbar
+  const armR = cx + 30;     // right end of crossbar
+  const armT = cy - 38;     // top of crossbar
+  const armB = armT + hh;
+  const r    = 5;            // corner radius
+
+  function rrect(x, y, w, h) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y,     x + w, y + r,     r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
+  // Dirt mound
+  const dirtG = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, 30);
+  dirtG.addColorStop(0, '#b8884a');
+  dirtG.addColorStop(1, '#6b4e22');
+  ctx.fillStyle = dirtG;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 7, 30, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cast shadow (darkened ellipse, offset)
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 8, cy + 14, 24, 6, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wood gradient (left→right gives cylindrical look on vertical bar)
+  const woodG = ctx.createLinearGradient(cx - vw / 2, 0, cx + vw / 2, 0);
+  woodG.addColorStop(0,    '#5a2a08');
+  woodG.addColorStop(0.18, '#a04e1a');
+  woodG.addColorStop(0.45, '#d07838');
+  woodG.addColorStop(0.75, '#9a4c18');
+  woodG.addColorStop(1,    '#4a2005');
+
+  // Horizontal bar uses top→bottom gradient
+  const hGrad = ctx.createLinearGradient(0, armT, 0, armB);
+  hGrad.addColorStop(0,   '#c87030');
+  hGrad.addColorStop(0.5, '#a05020');
+  hGrad.addColorStop(1,   '#5c2a08');
+
+  // Draw vertical bar
+  rrect(cx - vw / 2, top, vw, bot - top);
+  ctx.fillStyle   = woodG;
+  ctx.fill();
+  ctx.strokeStyle = '#2e1204';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  // Draw horizontal bar (on top)
+  rrect(armL, armT, armR - armL, hh);
+  ctx.fillStyle   = hGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#2e1204';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  // Left-edge highlight on vertical bar → gives 3-D depth
+  ctx.strokeStyle = 'rgba(255,195,110,0.38)';
+  ctx.lineWidth   = 2;
+  ctx.lineCap     = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx - vw / 2 + 3, bot - 5);
+  ctx.lineTo(cx - vw / 2 + 3, armB + 1);
+  ctx.moveTo(cx - vw / 2 + 3, armT - 1);
+  ctx.lineTo(cx - vw / 2 + 3, top + 7);
+  ctx.stroke();
+
+  // Top highlight on horizontal bar
+  ctx.beginPath();
+  ctx.moveTo(armL + 5, armT + 3);
+  ctx.lineTo(armR - 5, armT + 3);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -348,10 +514,10 @@ function render(now) {
   } else if (phase === PHASE.SCREAMING) {
     const loc = locations[locIdx];
     [scrX, scrY] = project(loc.lng, loc.lat);
-    shake = 4;
+    shake = showCross ? 0 : 4;  // no shake once cross is showing
     bubbleTimer += dt;
-    if (bubbleTimer > 80 && bubbleText.length < BUBBLE_TGT.length) {
-      bubbleText += BUBBLE_TGT[bubbleText.length];
+    if (bubbleTimer > 80 && bubbleText.length < bubbleTgt.length) {
+      bubbleText += bubbleTgt[bubbleText.length];
       bubbleTimer = 0;
     }
 
@@ -360,28 +526,38 @@ function render(now) {
     [scrX, scrY] = project(loc.lng, loc.lat);
   }
 
+  // ── JS-driven fade ────────────────────────────────────────────
+  if (fadeOutActive) {
+    llamaFadeAlpha = Math.max(0, 1 - (now - fadeStartTime) / FADE_OUT_DUR);
+    if (llamaFadeAlpha === 0) fadeOutActive = false;
+  } else if (fadeInActive) {
+    llamaFadeAlpha = Math.min(1, (now - fadeStartTime) / FADE_IN_DUR);
+    if (llamaFadeAlpha === 1) fadeInActive = false;
+  }
+  llamaEl.style.opacity = llamaFadeAlpha;
+
   // Random shake offset
   const ox = shake ? (Math.random() - 0.5) * shake * 2 : 0;
   const oy = shake ? (Math.random() - 0.5) * shake     : 0;
 
   // Position llama GIF
   // Anchor: bottom-center of image = feet at (scrX, scrY)
-  llamaEl.style.left    = (scrX - LLAMA_W / 2 + ox) + 'px';
-  llamaEl.style.top     = (scrY - LLAMA_H + oy) + 'px';
+  llamaEl.style.left      = (scrX - LLAMA_W / 2 + ox) + 'px';
+  llamaEl.style.top       = (scrY - LLAMA_H + oy) + 'px';
   llamaEl.style.transform = `scaleX(${facingRight ? -1 : 1})`;
-  llamaEl.style.display = 'block';
+  llamaEl.style.display   = 'block';
 
-  // Shadow ellipse (canvas)
+  // Shadow ellipse (canvas) – perfectly synced via llamaFadeAlpha
   ctx.save();
-  ctx.globalAlpha = 0.25;
+  ctx.globalAlpha = 0.25 * llamaFadeAlpha;
   ctx.fillStyle = '#000';
   ctx.beginPath();
   ctx.ellipse(scrX + ox * 0.5, scrY + 3, 28, 7, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // Speech bubble during scream
-  if (phase === PHASE.SCREAMING && bubbleText.length > 0) {
+  // Speech bubble during scream – fades with llama
+  if (phase === PHASE.SCREAMING && bubbleText.length > 0 && llamaFadeAlpha > 0.05) {
     // Head is roughly at top-center of the GIF
     const dir  = facingRight ? 1 : -1;
     const headX = scrX + dir * 38;
@@ -394,25 +570,31 @@ function render(now) {
 
     ctx.save();
 
-    // Bubble
+    const r    = 8;                                      // corner radius
+    const tailBX = facingRight ? bx + 14 : bx + bw - 22;
+    const tx1  = tailBX, tx2 = tailBX + 7, tx3 = tailBX + 14;
+    const ty   = by + bh, tipY = by + bh + 10;
+
+    // Single path: rounded rect + tail as one shape → one stroke, no seam
+    ctx.beginPath();
+    ctx.moveTo(bx + r, by);
+    ctx.lineTo(bx + bw - r, by);
+    ctx.arcTo(bx + bw, by,     bx + bw, by + r,     r);
+    ctx.lineTo(bx + bw, by + bh - r);
+    ctx.arcTo(bx + bw, by + bh, bx + bw - r, by + bh, r);
+    ctx.lineTo(tx3, ty);
+    ctx.lineTo(tx2, tipY);   // tail tip
+    ctx.lineTo(tx1, ty);
+    ctx.lineTo(bx + r, by + bh);
+    ctx.arcTo(bx, by + bh, bx, by + bh - r, r);
+    ctx.lineTo(bx, by + r);
+    ctx.arcTo(bx, by, bx + r, by, r);
+    ctx.closePath();
+
     ctx.fillStyle   = '#FFFDE4';
     ctx.strokeStyle = '#444';
     ctx.lineWidth   = 2;
-    ctx.beginPath();
-    ctx.roundRect(bx, by, bw, bh, 8);
-    ctx.fill(); ctx.stroke();
-
-    // Tail pointing to head
-    const tailTipX = headX + dir * 4;
-    const tailBaseL = bx + (facingRight ? 6 : bw - 14);
-    const tailBaseR = tailBaseL + 8;
-    ctx.beginPath();
-    ctx.moveTo(tailBaseL, by + bh);
-    ctx.lineTo(tailTipX,  by + bh + 14);
-    ctx.lineTo(tailBaseR, by + bh);
-    ctx.fillStyle = '#FFFDE4';
     ctx.fill();
-    ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
     ctx.stroke();
 
     // Text
@@ -436,13 +618,29 @@ let userClicked    = false;
 let preloadDone    = false;
 let started        = false;
 
+// Show arrival sequence at the very first location (loc[0]) before any hop
+function showFirstArrival() {
+  locIdx = 0;
+  const loc = locations[0];
+  [scrX, scrY] = project(loc.lng, loc.lat);
+  phase       = PHASE.SCREAMING;
+  screamStart = performance.now();
+  bubbleText  = '';
+  bubbleTgt   = loc.scream || 'AAAAAAH!';
+  bubbleTimer = 0;
+  playScream();
+  showLabel(loc.name);
+  map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 800, essential: true });
+  setTimeout(() => { phase = PHASE.IDLE; startHop(); }, SCREAM_DUR + 200);
+}
+
 function tryStart() {
   if (started || !preloadDone || !userClicked) return;
   started = true;
   ac().resume();
   startScreen.classList.add('hidden');
   setTimeout(() => { startScreen.style.display = 'none'; }, 500);
-  startHop();
+  showFirstArrival(); // start at loc[0] with scream, then hop to loc[1]
 }
 
 startScreen.addEventListener('click', () => {
