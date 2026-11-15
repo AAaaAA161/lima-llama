@@ -501,6 +501,7 @@ let facingRight = true;
 let hopStart    = 0, hopDur = 0;
 let hopPath     = [];
 let hopSamePlace = false;
+let hopLastLng   = 0;      // für die Blickrichtung im Looping
 let hopZoomFrom = 5, hopZoomTo  = 5;
 const ARC_H     = 100;
 const HOP_ZOOM_DUR = 600;
@@ -641,6 +642,107 @@ function bulgePath(pts, amount = BULGE, reversed = false) {
     const k = Math.sin(Math.PI * i / n) * amount * len * side;
     return [x + nx * k, Math.max(-85, Math.min(85, y + ny * k))];
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FLUGSTIL: frei erfundene Kurven und Loopings
+// Auf den Bogen kommt eine Schlangenlinie und 0–2 Loopings, jedes Mal
+// zufällig neu. Mit ?klassisch in der URL fliegt das Lama nur den Bogen.
+// ═══════════════════════════════════════════════════════════════
+const FLIGHT_LOOPS     = !new URLSearchParams(location.search).has('klassisch');
+const LOOP_RADIUS      = 0.06;   // Looping-Radius als Anteil der Strecke
+const LOOP_HALF_WIN    = 0.07;   // halbe Dauer eines Loopings (Anteil der Flugzeit)
+const SAME_PLACE_LOOP  = 0.9;    // Looping auf der Stelle: Radius in Grad
+const FLIGHT_SAMPLES   = 300;
+
+function rand(a, b) { return a + Math.random() * (b - a); }
+
+// Punkte gleichmäßig nach Weglänge verteilen → konstante Fluggeschwindigkeit
+function resampleByLength(pts, m) {
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cum.push(cum[i-1] + Math.hypot(pts[i][0] - pts[i-1][0], pts[i][1] - pts[i-1][1]));
+  }
+  const total = cum[cum.length - 1];
+  if (total < 1e-9) return pts;
+  const out = [];
+  let j = 1;
+  for (let k = 0; k <= m; k++) {
+    const d = total * k / m;
+    while (j < cum.length - 1 && cum[j] < d) j++;
+    const seg = cum[j] - cum[j-1] || 1;
+    const u = (d - cum[j-1]) / seg;
+    out.push([lerp(pts[j-1][0], pts[j][0], u), lerp(pts[j-1][1], pts[j][1], u)]);
+  }
+  return out;
+}
+
+function pathLength(pts) {
+  let s = 0;
+  for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i-1][0], pts[i][1] - pts[i-1][1]);
+  return s;
+}
+
+// Looping auf der Stelle (z. B. Salzburg → Salzburg)
+function loopOnTheSpot(p) {
+  const r = SAME_PLACE_LOOP, side = Math.random() < 0.5 ? 1 : -1;
+  const pts = [];
+  for (let i = 0; i <= FLIGHT_SAMPLES; i++) {
+    const a = 2 * Math.PI * i / FLIGHT_SAMPLES;
+    pts.push([p.lng + side * r * Math.sin(a), p.lat + r * (1 - Math.cos(a))]);
+  }
+  return pts;
+}
+
+function addLoops(base) {
+  const n = base.length - 1;
+  const L = Math.hypot(base[n][0] - base[0][0], base[n][1] - base[0][1]);
+
+  // Schlangenlinie: 1,5–3,5 Wellen, an Start und Ziel ausgeblendet
+  const waves = rand(1.5, 3.5), amp = rand(0.03, 0.07) * L, phase = rand(0, 2 * Math.PI);
+
+  // 0–2 Loopings an zufälligen Stellen, nicht zu nah an Start/Ziel
+  const count = L > 3 ? (Math.random() < 0.5 ? 1 : 2) : (Math.random() < 0.7 ? 1 : 0);
+  const loops = [];
+  for (let k = 0; k < count; k++) {
+    const t0 = count === 1 ? rand(0.3, 0.7) : (k === 0 ? rand(0.22, 0.4) : rand(0.6, 0.78));
+    loops.push({ t0, side: Math.random() < 0.5 ? 1 : -1 });
+  }
+  const r = LOOP_RADIUS * L;
+
+  const out = base.map(([x, y], i) => {
+    const t = i / n;
+    // Tangente und Normale des Bogens an dieser Stelle
+    const a = base[Math.max(0, i - 1)], b = base[Math.min(n, i + 1)];
+    let tx = b[0] - a[0], ty = b[1] - a[1];
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl; ty /= tl;
+    const nx = -ty, ny = tx;
+
+    const w = amp * Math.sin(2 * Math.PI * waves * t + phase) * Math.sin(Math.PI * t);
+    let ox = nx * w, oy = ny * w;
+
+    for (const lp of loops) {
+      const s = (t - (lp.t0 - LOOP_HALF_WIN)) / (2 * LOOP_HALF_WIN);
+      if (s <= 0 || s >= 1) continue;
+      const back = -r * Math.sin(2 * Math.PI * s);          // kurz rückwärts …
+      const up   = lp.side * r * (1 - Math.cos(2 * Math.PI * s)); // … und im Kreis
+      ox += tx * back + nx * up;
+      oy += ty * back + ny * up;
+    }
+    return [x + ox, Math.max(-85, Math.min(85, y + oy))];
+  });
+  return out;
+}
+
+// Ganzer Flugweg von → nach
+function flightPath(from, to, amount, reversed) {
+  const base = greatCirclePath(from, to, amount, reversed);
+  if (!FLIGHT_LOOPS) return base;
+  const samePlace = Math.hypot(to.lng - from.lng, to.lat - from.lat) < 0.01;
+  if (samePlace) return loopOnTheSpot(from);
+  const fine = resampleByLength(base, FLIGHT_SAMPLES);
+  return resampleByLength(addLoops(fine), FLIGHT_SAMPLES);
 }
 
 // Position auf dem Pfad bei t (0..1)
@@ -820,7 +922,7 @@ function startHop() {
 
   const toIdx = (locIdx + 1) % locations.length;
   const bulge = nextRouteBulge(locIdx, toIdx);
-  hopPath     = greatCirclePath(from, to, bulge.amount, bulge.reversed);
+  hopPath     = flightPath(from, to, bulge.amount, bulge.reversed);
   thoughtText = to.thought || '';
 
   const dlng = to.lng - from.lng, dlat = to.lat - from.lat;
@@ -841,6 +943,12 @@ function startHop() {
   hopDur = samePlace
     ? SAME_PLACE_HOP_DUR
     : Math.min(6000, Math.max(2000, dist * 85));
+  // Kurven und Loopings verlängern den Weg → etwas mehr Zeit (max. +60 %)
+  if (FLIGHT_LOOPS) {
+    const ratio = samePlace ? 2 : pathLength(hopPath) / Math.max(dist, 1e-6);
+    hopDur *= Math.min(1.6, Math.max(1, ratio * 0.8));
+  }
+  hopLastLng = hopPath[0][0];
   // Genug Zeit, um den Gedanken zu lesen
   if (thoughtText) hopDur = Math.max(hopDur, 1500 + thoughtText.length * 60);
 
@@ -852,7 +960,7 @@ function startHop() {
 function onArrival() {
   stopMelody();
   thoughtText = '';
-  if (!hopSamePlace) trailDone.push(hopPath);
+  if (!hopSamePlace || FLIGHT_LOOPS) trailDone.push(hopPath);
   setTrail();
   arriveAt((locIdx + 1) % locations.length);
 }
@@ -1144,7 +1252,13 @@ function render(now) {
   if (phase === PHASE.HOPPING) {
     const t = Math.min((clock - hopStart) / hopDur, 1);
     const [lng, lat] = pointOnPath(hopPath, t);
-    if (!hopSamePlace) {
+    // Bei Kurven und Loopings schaut das Lama in die aktuelle Flugrichtung
+    if (FLIGHT_LOOPS) {
+      const dl = lng - hopLastLng;
+      if (Math.abs(dl) > 0.002) facingRight = dl > 0;
+      hopLastLng = lng;
+    }
+    if (!hopSamePlace || FLIGHT_LOOPS) {
       const n = Math.floor(t * (hopPath.length - 1));
       setTrail(hopPath.slice(0, n + 1).concat([[lng, lat]]));
     }
