@@ -537,7 +537,7 @@ function toVec(lng, lat) {
 
 // Punkte entlang des Großkreises von → nach, Längengrade fortlaufend
 // (ohne Sprung an der Datumsgrenze)
-function greatCirclePath(from, to) {
+function greatCirclePath(from, to, amount = BULGE, reversed = false) {
   const v1 = toVec(from.lng, from.lat), v2 = toVec(to.lng, to.lat);
   const dot = Math.max(-1, Math.min(1, v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]));
   const omega = Math.acos(dot);
@@ -560,7 +560,73 @@ function greatCirclePath(from, to) {
     prevLng = lng;
     pts.push([lng, lat]);
   }
-  return pts;
+  return bulgePath(pts, amount, reversed);
+}
+
+// Zusätzliche Wölbung, damit jeder Sprung als Bogen erscheint – auch kurze
+// und Nord-Süd-Strecken, die als Großkreis auf der Karte gerade wären.
+// Die Wölbung ist ein Anteil der Sehnenlänge und geht zur Seite, zu der
+// sich der Großkreis ohnehin schon biegt.
+//
+// Wiederholte Strecken: Orte unter ROUTE_GROUP_KM Abstand zählen als ein
+// Ort (Salzburg, Braunau, Ried). Jede weitere Strecke zwischen denselben
+// Orten – egal in welcher Richtung – wird um BULGE_STEP flacher, damit die
+// Bögen ineinander liegen statt sich zu überdecken.
+const BULGE          = 0.15;
+const BULGE_STEP     = 0.08;
+const ROUTE_GROUP_KM = 100;
+
+let routeGroup = [];   // Station → Gruppen-Nr. (nahe Orte teilen eine)
+let routeCount = {};   // "g1-g2" → wie oft in dieser Runde schon geflogen
+
+function distKm(a, b) {
+  const v1 = toVec(a.lng, a.lat), v2 = toVec(b.lng, b.lat);
+  const dot = Math.max(-1, Math.min(1, v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]));
+  return Math.acos(dot) * 6371;
+}
+
+function buildRouteGroups() {
+  routeGroup = [];
+  locations.forEach((loc, i) => {
+    let g = i;
+    for (let j = 0; j < i; j++) {
+      if (distKm(loc, locations[j]) < ROUTE_GROUP_KM) { g = routeGroup[j]; break; }
+    }
+    routeGroup.push(g);
+  });
+}
+
+// Wölbung für den Sprung von Station i nach Station j. Liefert Stärke und
+// ob die Richtung umgekehrt zur festen Reihenfolge der Gruppen ist.
+function nextRouteBulge(i, j) {
+  if (distKm(locations[i], locations[j]) < 1) return { amount: BULGE, reversed: false };  // auf der Stelle: zählt nicht
+  const gi = routeGroup[i], gj = routeGroup[j];
+  const key = Math.min(gi, gj) + '-' + Math.max(gi, gj);
+  const n = routeCount[key] || 0;
+  routeCount[key] = n + 1;
+  return { amount: BULGE - BULGE_STEP * n, reversed: gi > gj };
+}
+
+function bulgePath(pts, amount = BULGE, reversed = false) {
+  const n = pts.length - 1;
+  const [ax, ay] = pts[0], [bx, by] = pts[n];
+  const dx = bx - ax, dy = by - ay;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return pts;                 // Hüpfer auf der Stelle
+  // Normale in fester Orientierung (unabhängig von der Flugrichtung),
+  // damit Hin- und Rückweg auf derselben Seite gestaffelt werden
+  const flip = reversed ? -1 : 1;
+  const nx = -dy / len * flip, ny = dx / len * flip;
+
+  // Biegt sich der Großkreis schon merklich? Dann dieselbe Seite nehmen.
+  const mid = pts[Math.round(n / 2)];
+  const dev = (mid[0] - (ax + bx) / 2) * nx + (mid[1] - (ay + by) / 2) * ny;
+  const side = Math.abs(dev) > 0.02 * len ? Math.sign(dev) : 1;
+
+  return pts.map(([x, y], i) => {
+    const k = Math.sin(Math.PI * i / n) * amount * len * side;
+    return [x + nx * k, Math.max(-85, Math.min(85, y + ny * k))];
+  });
 }
 
 // Position auf dem Pfad bei t (0..1)
@@ -733,7 +799,9 @@ function startHop() {
   const from = locations[locIdx];
   const to   = locations[(locIdx + 1) % locations.length];
 
-  hopPath     = greatCirclePath(from, to);
+  const toIdx = (locIdx + 1) % locations.length;
+  const bulge = nextRouteBulge(locIdx, toIdx);
+  hopPath     = greatCirclePath(from, to, bulge.amount, bulge.reversed);
   thoughtText = to.thought || '';
 
   const dlng = to.lng - from.lng, dlat = to.lat - from.lat;
@@ -792,6 +860,7 @@ function finale() {
     llamaFadeAlpha = 0;
     fadeOutActive  = false;
     trailDone      = [];
+    routeCount     = {};
     setTrail();
     const first = locations[0];
     map.flyTo({ center: [first.lng, first.lat], zoom: 5, duration: 1200, essential: true });
@@ -1383,6 +1452,7 @@ map.on('load', async () => {
   }
   if (!locations.length) return;
   addTrailLayer();
+  buildRouteGroups();
   buildTimeline();
   preloadTiles();
 });
