@@ -132,6 +132,20 @@
       100% { opacity: 0.9; transform: translate(-50%, -50%) rotate(-14deg) scale(1); }
     }
 
+    /* Aufprall des Stempels: das ganze Bild wackelt kurz und klingt aus.
+       Leichtes Vergrößern verhindert, dass an den Rändern Hintergrund
+       hervorblitzt. */
+    body.impact { animation: impact 0.5s ease-out; }
+    @keyframes impact {
+      0%   { transform: none; }
+      12%  { transform: translate(-11px,  8px) scale(1.03); }
+      26%  { transform: translate( 10px, -7px) scale(1.03); }
+      40%  { transform: translate( -7px,  5px) scale(1.02); }
+      55%  { transform: translate(  4px, -3px) scale(1.012); }
+      75%  { transform: translate( -2px,  1px) scale(1.006); }
+      100% { transform: none; }
+    }
+
     #title {
       position: absolute;
       top: 16px; left: 50%;
@@ -758,14 +772,18 @@ function hideSign() { label.classList.remove('show'); }
 
 // ── Sprechen am Ort ───────────────────────────────────────────
 function readMs(text) { return Math.max(2500, text.length * 60); }
+// Folgt auf den Satz BUSTED, kommt der Stempel kurz nach dem letzten
+// Buchstaben – gelesen wird schon während des Tippens.
+const BUSTED_AFTER_SAY_MS = 600;
 
-function speak(text, done) {
+// holdMs: wie lange der fertige Satz stehen bleibt (Standard: Lesezeit)
+function speak(text, done, holdMs) {
   if (!text) { done(); return; }
   bubbleTgt   = text;
   bubbleText  = '';
   bubbleTimer = 0;
   bubbleOn    = true;
-  after(text.length * TYPE_MS + readMs(text), () => {
+  after(text.length * TYPE_MS + (holdMs ?? readMs(text)), () => {
     bubbleOn   = false;
     bubbleText = '';
     done();
@@ -787,10 +805,11 @@ function arriveAt(idx) {
     ? finale
     : () => { hideSign(); phase = PHASE.IDLE; startHop(); };
 
+  const akte = hasAkte(loc);
   after(ARRIVE_PAUSE, () => speak(loc.say, () => {
-    if (hasAkte(loc)) busted(loc, next);
+    if (akte) busted(loc, next);
     else next();
-  }));
+  }, akte ? BUSTED_AFTER_SAY_MS : undefined));
 }
 
 // ── hop ────────────────────────────────────────────────────────
@@ -878,6 +897,10 @@ function finale() {
 // dann öffnet sich die Akte. Weiter nach Lesezeit oder per Klick.
 // ═══════════════════════════════════════════════════════════════
 const STAMP_T = 'translate(-50%, -50%) rotate(-14deg)';
+const STAMP_IMPACT_MS = 250;   // Stempel-Animation (0.35 s) trifft hier auf
+document.body.addEventListener('animationend', e => {
+  if (e.animationName === 'impact') document.body.classList.remove('impact');
+});
 const AKTE_FIELDS = [['datum', 'Datum'], ['behoerde', 'Behörde'], ['vorwurf', 'Vorwurf']];
 
 function freezeLlama() {
@@ -950,6 +973,14 @@ function busted(loc, done) {
   void stampEl.offsetWidth;
   stampEl.classList.add('slam');
   bustedEl.classList.add('show');
+
+  // Bild wackelt in dem Moment, in dem der Stempel aufschlägt
+  after(STAMP_IMPACT_MS, () => {
+    if (token !== bustedToken) return;
+    document.body.classList.remove('impact');
+    void document.body.offsetWidth;
+    document.body.classList.add('impact');
+  });
 
   after(1100, () => {
     if (token !== bustedToken) return;
