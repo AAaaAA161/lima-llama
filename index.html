@@ -132,6 +132,20 @@
       100% { opacity: 0.9; transform: translate(-50%, -50%) rotate(-14deg) scale(1); }
     }
 
+    /* Aufprall des Stempels: das ganze Bild wackelt kurz und klingt aus.
+       Leichtes Vergrößern verhindert, dass an den Rändern Hintergrund
+       hervorblitzt. */
+    body.impact { animation: impact 0.5s ease-out; }
+    @keyframes impact {
+      0%   { transform: none; }
+      12%  { transform: translate(-8px,  6px) scale(1.02); }
+      26%  { transform: translate( 7px, -5px) scale(1.02); }
+      40%  { transform: translate(-5px,  4px) scale(1.015); }
+      55%  { transform: translate( 3px, -2px) scale(1.01); }
+      75%  { transform: translate(-1px,  1px) scale(1.005); }
+      100% { transform: none; }
+    }
+
     #title {
       position: absolute;
       top: 16px; left: 50%;
@@ -878,6 +892,10 @@ function finale() {
 // dann öffnet sich die Akte. Weiter nach Lesezeit oder per Klick.
 // ═══════════════════════════════════════════════════════════════
 const STAMP_T = 'translate(-50%, -50%) rotate(-14deg)';
+const STAMP_IMPACT_MS = 250;   // Stempel-Animation (0.35 s) trifft hier auf
+document.body.addEventListener('animationend', e => {
+  if (e.animationName === 'impact') document.body.classList.remove('impact');
+});
 const AKTE_FIELDS = [['datum', 'Datum'], ['behoerde', 'Behörde'], ['vorwurf', 'Vorwurf']];
 
 function freezeLlama() {
@@ -950,6 +968,14 @@ function busted(loc, done) {
   void stampEl.offsetWidth;
   stampEl.classList.add('slam');
   bustedEl.classList.add('show');
+
+  // Bild wackelt in dem Moment, in dem der Stempel aufschlägt
+  after(STAMP_IMPACT_MS, () => {
+    if (token !== bustedToken) return;
+    document.body.classList.remove('impact');
+    void document.body.offsetWidth;
+    document.body.classList.add('impact');
+  });
 
   after(1100, () => {
     if (token !== bustedToken) return;
