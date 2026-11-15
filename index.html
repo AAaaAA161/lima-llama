@@ -772,14 +772,18 @@ function hideSign() { label.classList.remove('show'); }
 
 // ── Sprechen am Ort ───────────────────────────────────────────
 function readMs(text) { return Math.max(2500, text.length * 60); }
+// Folgt auf den Satz BUSTED, kommt der Stempel kurz nach dem letzten
+// Buchstaben – gelesen wird schon während des Tippens.
+const BUSTED_AFTER_SAY_MS = 600;
 
-function speak(text, done) {
+// holdMs: wie lange der fertige Satz stehen bleibt (Standard: Lesezeit)
+function speak(text, done, holdMs) {
   if (!text) { done(); return; }
   bubbleTgt   = text;
   bubbleText  = '';
   bubbleTimer = 0;
   bubbleOn    = true;
-  after(text.length * TYPE_MS + readMs(text), () => {
+  after(text.length * TYPE_MS + (holdMs ?? readMs(text)), () => {
     bubbleOn   = false;
     bubbleText = '';
     done();
@@ -801,10 +805,11 @@ function arriveAt(idx) {
     ? finale
     : () => { hideSign(); phase = PHASE.IDLE; startHop(); };
 
+  const akte = hasAkte(loc);
   after(ARRIVE_PAUSE, () => speak(loc.say, () => {
-    if (hasAkte(loc)) busted(loc, next);
+    if (akte) busted(loc, next);
     else next();
-  }));
+  }, akte ? BUSTED_AFTER_SAY_MS : undefined));
 }
 
 // ── hop ────────────────────────────────────────────────────────
