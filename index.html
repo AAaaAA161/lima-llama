@@ -560,7 +560,32 @@ function greatCirclePath(from, to) {
     prevLng = lng;
     pts.push([lng, lat]);
   }
-  return pts;
+  return bulgePath(pts);
+}
+
+// Zusätzliche Wölbung, damit jeder Sprung als Bogen erscheint – auch kurze
+// und Nord-Süd-Strecken, die als Großkreis auf der Karte gerade wären.
+// Die Wölbung wächst mit der Distanz (BULGE × Länge der Sehne) und geht
+// zur selben Seite, zu der sich der Großkreis ohnehin schon biegt.
+const BULGE = 0.15;
+
+function bulgePath(pts) {
+  const n = pts.length - 1;
+  const [ax, ay] = pts[0], [bx, by] = pts[n];
+  const dx = bx - ax, dy = by - ay;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return pts;                 // Hüpfer auf der Stelle
+  const nx = -dy / len, ny = dx / len;        // Normale (links der Flugrichtung)
+
+  // Biegt sich der Großkreis schon merklich? Dann dieselbe Seite nehmen.
+  const mid = pts[Math.round(n / 2)];
+  const dev = (mid[0] - (ax + bx) / 2) * nx + (mid[1] - (ay + by) / 2) * ny;
+  const side = Math.abs(dev) > 0.02 * len ? Math.sign(dev) : 1;
+
+  return pts.map(([x, y], i) => {
+    const k = Math.sin(Math.PI * i / n) * BULGE * len * side;
+    return [x + nx * k, Math.max(-85, Math.min(85, y + ny * k))];
+  });
 }
 
 // Position auf dem Pfad bei t (0..1)
