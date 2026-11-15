@@ -33,24 +33,105 @@
       /* opacity driven by JS render loop – no CSS transition */
     }
 
+    /* Ortsschild (österreichische Ortstafel: weiß, schwarze Schrift,
+       blauer Balken oben und unten) */
+    :root { --sign-blue: #1f4e9c; --sign-font: "Arial Narrow", "Helvetica Neue", Arial, sans-serif; }
     #label {
       position: absolute;
       bottom: 100px; left: 50%;
-      transform: translateX(-50%);
-      background: rgba(10, 10, 30, 0.88);
-      color: #fff;
-      padding: 10px 24px;
-      border-radius: 28px;
-      font-size: 17px;
-      letter-spacing: 1px;
+      transform: translate(-50%, 10px);
+      background: #fff;
+      color: #111;
+      border-top: 8px solid var(--sign-blue);
+      border-bottom: 8px solid var(--sign-blue);
+      border-radius: 3px;
+      padding: 8px 28px 7px;
+      text-align: center;
+      font-family: var(--sign-font);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
       z-index: 20;
       opacity: 0;
-      transition: opacity 0.4s;
+      transition: opacity 0.4s, transform 0.4s;
       white-space: nowrap;
-      border: 1px solid rgba(255,255,255,0.15);
       pointer-events: none;
     }
-    #label.show { opacity: 1; }
+    #label.show { opacity: 1; transform: translate(-50%, 0); }
+    #label .sign-name { font-size: 28px; font-weight: 700; line-height: 1.1; letter-spacing: 0.3px; }
+    #label .sign-sub  { font-size: 13px; margin-top: 3px; color: #333; letter-spacing: 0.5px; }
+
+    /* Eingefrorenes Lama (Standbild während BUSTED) */
+    #llama-still {
+      position: absolute;
+      pointer-events: none;
+      z-index: 6;
+      display: none;
+      transform-origin: bottom center;
+    }
+
+    /* BUSTED & Akte */
+    #busted {
+      position: absolute; inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0);
+      transition: background 0.5s;
+    }
+    #busted.show { display: flex; }
+    #busted.dim  { background: rgba(0,0,0,0.35); }
+    #akte {
+      position: relative;
+      width: min(560px, 88vw);
+      max-height: 78vh;
+      overflow: hidden;
+      background: #f0dca8;
+      background-image: linear-gradient(180deg, rgba(255,255,255,0.25), rgba(0,0,0,0.04));
+      border-radius: 4px;
+      box-shadow: 0 14px 44px rgba(0,0,0,0.55);
+      padding: 30px 34px 24px;
+      font-family: 'Courier New', monospace;
+      color: #2a2418;
+      opacity: 0;
+      transform: translateY(30px) rotate(-1deg);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    #akte.show { opacity: 1; transform: translateY(0) rotate(-1deg); }
+    .akte-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      border-bottom: 2px solid #2a2418;
+      padding-bottom: 8px; margin-bottom: 10px;
+      font-weight: bold; letter-spacing: 2px;
+    }
+    .akte-title { font-size: 22px; letter-spacing: 6px; }
+    .akte-az    { font-size: 13px; }
+    .akte-entry {
+      display: grid; grid-template-columns: 100px 1fr; gap: 3px 12px;
+      padding: 9px 0;
+      border-bottom: 1px dashed rgba(42,36,24,0.45);
+      font-size: 15px;
+    }
+    .akte-entry dt { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #6b5a3a; padding-top: 3px; }
+    .akte-entry dd { font-weight: bold; }
+    .akte-hint { font-size: 11px; color: #6b5a3a; margin-top: 12px; text-align: right; }
+    #stamp {
+      position: absolute; left: 50%; top: 50%;
+      z-index: 45;
+      color: #c41212;
+      border: 7px double #c41212;
+      border-radius: 10px;
+      padding: 4px 24px;
+      font: 900 72px Impact, "Arial Black", sans-serif;
+      letter-spacing: 6px;
+      opacity: 0;
+      transform: translate(-50%, -50%) rotate(-14deg) scale(3);
+      pointer-events: none;
+      mix-blend-mode: multiply;
+    }
+    #stamp.slam { animation: slam 0.35s cubic-bezier(.2,1.5,.4,1) forwards; }
+    @keyframes slam {
+      0%   { opacity: 0;   transform: translate(-50%, -50%) rotate(-14deg) scale(3); }
+      100% { opacity: 0.9; transform: translate(-50%, -50%) rotate(-14deg) scale(1); }
+    }
 
     #title {
       position: absolute;
@@ -115,17 +196,20 @@
       position: absolute;
       top: 12px; right: 12px;
       z-index: 20;
-      background: rgba(10,10,30,0.75);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: #fff;
-      width: 36px; height: 36px;
-      border-radius: 8px;
+      background: #fff;
+      border: none;
+      border-top: 4px solid var(--sign-blue);
+      border-bottom: 4px solid var(--sign-blue);
+      color: #111;
+      width: 38px; height: 38px;
+      border-radius: 3px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       cursor: pointer;
       font-size: 16px;
       display: flex; align-items: center; justify-content: center;
       transition: background 0.2s;
     }
-    #fullscreen-btn:hover { background: rgba(40,40,80,0.95); }
+    #fullscreen-btn:hover { background: #e8eef8; }
 
     /* Zeitleiste */
     #timeline {
@@ -169,10 +253,14 @@
     #tl-marker {
       position: absolute; bottom: 14px;
       transform: translateX(-50%);
-      background: rgba(10,10,30,0.88); color: #fff;
-      font-size: 12px; letter-spacing: 1px;
-      padding: 2px 8px; border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.2);
+      background: #fff; color: #111;
+      font: bold 13px var(--sign-font);
+      letter-spacing: 0.5px;
+      padding: 1px 8px;
+      border-radius: 2px;
+      border-top: 3px solid var(--sign-blue);
+      border-bottom: 3px solid var(--sign-blue);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
 
     /* Kiosk-Modus (?kiosk) */
@@ -185,6 +273,9 @@
 <div id="map"></div>
 <canvas id="overlay"></canvas>
 <img id="llama" class="llama-img" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lama">
+<canvas id="llama-still"></canvas>
+<div id="busted"><div id="akte"></div></div>
+<div id="stamp">BUSTED</div>
 <div id="start-screen">
   <img class="llama-img" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lima Llama">
   <h1>Lima Llama</h1>
@@ -378,17 +469,12 @@ async function loadLocations() {
   locations = await res.json();
 }
 
-function labelText(loc) {
-  let t = '📍 ' + loc.name;
-  if (loc.year)   t += ', ' + loc.year;
-  if (loc.reason) t += ' – ' + loc.reason;
-  return t;
-}
+function townOf(loc) { return loc.name.split(',')[0].trim(); }
 
 // ═══════════════════════════════════════════════════════════════
 // ANIMATION STATE
 // ═══════════════════════════════════════════════════════════════
-const PHASE = { IDLE: 0, HOPPING: 1, SCREAMING: 2 };
+const PHASE = { IDLE: 0, HOPPING: 1, AT_STATION: 2 };
 
 let phase       = PHASE.IDLE;
 let facingRight = true;
@@ -401,11 +487,14 @@ const ARC_H     = 100;
 const HOP_ZOOM_DUR = 600;
 const SAME_PLACE_HOP_DUR = 1500;
 
-const SCREAM_DUR = 3200;
+const ARRIVE_PAUSE = 700;   // kurz landen, bevor das Lama spricht
+const TYPE_MS      = 45;    // Tippgeschwindigkeit der Sprechblase
 
-let bubbleText   = '';
-let bubbleTgt    = 'AAAAAAH!';
+let bubbleOn     = false;   // Sprechblase am Ort sichtbar
+let bubbleText   = '';      // bereits getippter Teil
+let bubbleTgt    = '';      // ganzer Satz
 let bubbleTimer  = 0;
+let thoughtText  = '';      // Gedanke auf dem aktuellen Weg
 
 let scrX = 0, scrY = 0;
 
@@ -419,11 +508,18 @@ let fadeStartTime  = 0;
 const FADE_OUT_DUR = 1000;
 const FADE_IN_DUR  = 900;
 
-const label = document.getElementById('label');
-let labelHideAt = 0;
+const label    = document.getElementById('label');
+const bustedEl = document.getElementById('busted');
+const akteEl   = document.getElementById('akte');
+const stampEl  = document.getElementById('stamp');
+const stillEl  = document.getElementById('llama-still');
+let frozen       = false;   // Lama als Standbild (BUSTED)
+let bustedToken  = 0;
+let bustedFinish = null;
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function smooth(t) { return t * t * (3 - 2 * t); }
+function clamp01(t) { return Math.max(0, Math.min(1, t)); }
 
 // ── Großkreis (Flugbogen) ─────────────────────────────────────
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
@@ -537,19 +633,61 @@ function addTrailLayer() {
 }
 function project(lng, lat) { const p = map.project([lng, lat]); return [p.x, p.y]; }
 
-function showLabel(loc) {
-  label.textContent = labelText(loc);
+// ── Ortsschild ────────────────────────────────────────────────
+function showSign(loc) {
+  const country = loc.name.split(',').slice(1).join(',').trim();
+  const sub = [country, loc.year, loc.reason].filter(Boolean).join(' · ');
+  label.innerHTML = '';
+  const n = document.createElement('div');
+  n.className = 'sign-name';
+  n.textContent = townOf(loc);
+  label.appendChild(n);
+  if (sub) {
+    const s = document.createElement('div');
+    s.className = 'sign-sub';
+    s.textContent = sub;
+    label.appendChild(s);
+  }
   label.classList.add('show');
-  const hideAt = labelHideAt = clock + 3500;
-  after(3500, () => { if (labelHideAt === hideAt) label.classList.remove('show'); });
 }
 
-function startScream(loc) {
-  phase       = PHASE.SCREAMING;
+function hideSign() { label.classList.remove('show'); }
+
+// ── Sprechen am Ort ───────────────────────────────────────────
+function readMs(text) { return Math.max(2500, text.length * 60); }
+
+function speak(text, done) {
+  if (!text) { done(); return; }
+  bubbleTgt   = text;
   bubbleText  = '';
-  bubbleTgt   = loc.year || 'AAAAAAH!';
   bubbleTimer = 0;
-  showLabel(loc);
+  bubbleOn    = true;
+  after(text.length * TYPE_MS + readMs(text), () => {
+    bubbleOn   = false;
+    bubbleText = '';
+    done();
+  });
+}
+
+// ── Station: landen → Ortsschild → Satz → (BUSTED + Akte) → weiter ──
+function hasAkte(loc) { return Array.isArray(loc.akte) && loc.akte.length > 0; }
+
+function arriveAt(idx) {
+  locIdx = idx;
+  const loc    = locations[idx];
+  const isLast = idx === locations.length - 1;
+  phase = PHASE.AT_STATION;
+  showSign(loc);
+  map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 1000, essential: true });
+
+  const next = isLast
+    ? finale
+    : () => { hideSign(); phase = PHASE.IDLE; startHop(); };
+
+  after(ARRIVE_PAUSE, () => speak(loc.say, () => {
+    if (hasAkte(loc)) busted(loc, next);
+    else next();
+  }));
 }
 
 // ── hop ────────────────────────────────────────────────────────
@@ -558,7 +696,8 @@ function startHop() {
   const from = locations[locIdx];
   const to   = locations[(locIdx + 1) % locations.length];
 
-  hopPath = greatCirclePath(from, to);
+  hopPath     = greatCirclePath(from, to);
+  thoughtText = to.thought || '';
 
   const dlng = to.lng - from.lng, dlat = to.lat - from.lat;
   const dist = Math.sqrt(dlng*dlng + dlat*dlat);
@@ -578,6 +717,8 @@ function startHop() {
   hopDur = samePlace
     ? SAME_PLACE_HOP_DUR
     : Math.min(6000, Math.max(2000, dist * 85));
+  // Genug Zeit, um den Gedanken zu lesen
+  if (thoughtText) hopDur = Math.max(hopDur, 1500 + thoughtText.length * 60);
 
   hopStart = clock;
   phase    = PHASE.HOPPING;
@@ -585,53 +726,159 @@ function startHop() {
 }
 
 function onArrival() {
-  locIdx = (locIdx + 1) % locations.length;
   stopMelody();
+  thoughtText = '';
   if (!hopSamePlace) trailDone.push(hopPath);
   setTrail();
+  arriveAt((locIdx + 1) % locations.length);
+}
 
-  const loc    = locations[locIdx];
-  const isLast = locIdx === locations.length - 1;
+// ── Finale: Glocke, Lama verblasst, Grabstein, Neustart ───────
+function finale() {
+  playBell();
 
-  startScream(loc);
-  map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 1000, essential: true });
+  after(800, () => {
+    showGrave     = true;
+    fadeOutActive = true;
+    fadeInActive  = false;
+    fadeStartTime = clock;
+  });
 
-  if (isLast) {
-    // Finale: bell toll, llama fades, gravestone appears, 5s pause, restart
-    playBell();
-
-    // After bubble types in (~1.5s): start JS-driven fade + show gravestone
-    after(1500, () => {
-      showGrave     = true;
-      fadeOutActive = true;
-      fadeInActive  = false;
+  // Nach Ausblenden (1s) + 5s Pause → Neustart an der ersten Station
+  after(800 + FADE_OUT_DUR + 5000, () => {
+    hideSign();
+    showGrave      = false;
+    phase          = PHASE.IDLE;
+    bubbleOn       = false;
+    bubbleText     = '';
+    locIdx         = 0;
+    llamaFadeAlpha = 0;
+    fadeOutActive  = false;
+    trailDone      = [];
+    setTrail();
+    const first = locations[0];
+    map.flyTo({ center: [first.lng, first.lat], zoom: 5, duration: 1200, essential: true });
+    after(1200, () => {
+      fadeInActive  = true;
       fadeStartTime = clock;
+      after(FADE_IN_DUR + 300, showFirstArrival);
     });
+  });
+}
 
-    // After fade (1s) + 5s pause → restart at first location
-    after(1500 + FADE_OUT_DUR + 5000, () => {
-      showGrave      = false;
-      phase          = PHASE.IDLE;
-      bubbleText     = '';
-      locIdx         = 0;
-      llamaFadeAlpha = 0;
-      fadeOutActive  = false;
-      trailDone      = [];
-      setTrail();
-      const first = locations[0];
-      map.flyTo({ center: [first.lng, first.lat], zoom: 5, duration: 1200, essential: true });
-      after(1200, () => {
-        fadeInActive  = true;
-        fadeStartTime = clock;
-        after(FADE_IN_DUR + 300, showFirstArrival);
-      });
+// ═══════════════════════════════════════════════════════════════
+// BUSTED & AKTE
+// Melodie aus, Lama erstarrt (Standbild), Schrei, roter Stempel,
+// dann öffnet sich die Akte. Weiter nach Lesezeit oder per Klick.
+// ═══════════════════════════════════════════════════════════════
+const STAMP_T = 'translate(-50%, -50%) rotate(-14deg)';
+const AKTE_FIELDS = [['datum', 'Datum'], ['behoerde', 'Behörde'], ['vorwurf', 'Vorwurf'], ['urteil', 'Urteil']];
+
+function freezeLlama() {
+  const dpr = window.devicePixelRatio || 1;
+  stillEl.width  = LLAMA_W * dpr;
+  stillEl.height = LLAMA_H * dpr;
+  stillEl.style.width  = LLAMA_W + 'px';
+  stillEl.style.height = LLAMA_H + 'px';
+  const sc = stillEl.getContext('2d');
+  sc.setTransform(dpr, 0, 0, dpr, 0, 0);
+  sc.clearRect(0, 0, LLAMA_W, LLAMA_H);
+  try { sc.drawImage(llamaEl, 0, 0, LLAMA_W, LLAMA_H); } catch (e) { /* Bild nicht bereit */ }
+  frozen = true;
+}
+
+function akteChars(loc) {
+  return loc.akte.reduce((n, e) => n + AKTE_FIELDS.map(([k]) => e[k] || '').join(' ').length, 0);
+}
+
+function fillAkte(loc) {
+  akteEl.innerHTML = '';
+  const head  = document.createElement('div');
+  head.className = 'akte-head';
+  const title = document.createElement('span');
+  title.className = 'akte-title';
+  title.textContent = 'AKTE';
+  const az = document.createElement('span');
+  az.className = 'akte-az';
+  az.textContent = townOf(loc) + (loc.year ? ' · ' + loc.year : '');
+  head.append(title, az);
+  akteEl.appendChild(head);
+
+  loc.akte.forEach(entry => {
+    const dl = document.createElement('dl');
+    dl.className = 'akte-entry';
+    AKTE_FIELDS.forEach(([key, name]) => {
+      if (!entry[key]) return;
+      const dt = document.createElement('dt');
+      dt.textContent = name;
+      const dd = document.createElement('dd');
+      dd.textContent = entry[key];
+      dl.append(dt, dd);
     });
+    akteEl.appendChild(dl);
+  });
 
-  } else {
-    playScream();
-    after(SCREAM_DUR + 200, () => { phase = PHASE.IDLE; startHop(); });
+  if (!KIOSK) {
+    const hint = document.createElement('div');
+    hint.className = 'akte-hint';
+    hint.textContent = 'Klicken zum Weiterspielen';
+    akteEl.appendChild(hint);
   }
 }
+
+// Stempel wandert von der Bildmitte auf die rechte untere Ecke der Akte
+function dockStamp() {
+  stampEl.style.transition = 'none';
+  stampEl.classList.remove('slam');
+  stampEl.style.opacity   = '0.9';
+  stampEl.style.transform = STAMP_T + ' scale(1)';
+  void stampEl.offsetWidth;
+  stampEl.style.transition = 'left 0.6s ease, top 0.6s ease, transform 0.6s ease, opacity 0.4s';
+  stampEl.style.left = (akteEl.offsetLeft + akteEl.offsetWidth - 110) + 'px';
+  stampEl.style.top  = (akteEl.offsetTop + akteEl.offsetHeight - 40) + 'px';
+  stampEl.style.transform = STAMP_T + ' scale(0.5)';
+}
+
+function busted(loc, done) {
+  const token = ++bustedToken;
+  stopMelody();
+  freezeLlama();
+  playScream();
+
+  stampEl.removeAttribute('style');
+  stampEl.className = '';
+  void stampEl.offsetWidth;
+  stampEl.classList.add('slam');
+  bustedEl.classList.add('show');
+
+  after(1100, () => {
+    if (token !== bustedToken) return;
+    fillAkte(loc);
+    akteEl.classList.add('show');
+    bustedEl.classList.add('dim');
+    dockStamp();
+  });
+
+  const finish = () => {
+    if (token !== bustedToken) return;
+    bustedToken++;
+    bustedFinish = null;
+    akteEl.classList.remove('show');
+    bustedEl.classList.remove('dim');
+    stampEl.style.opacity = '0';
+    after(500, () => {
+      bustedEl.classList.remove('show');
+      stampEl.removeAttribute('style');
+      stampEl.className = '';
+      frozen = false;
+      done();
+    });
+  };
+  bustedFinish = finish;
+  after(1100 + Math.max(5000, akteChars(loc) * 45), finish);
+}
+
+bustedEl.addEventListener('click', () => { if (bustedFinish) bustedFinish(); });
 
 // ═══════════════════════════════════════════════════════════════
 // GRABSTEIN
@@ -746,9 +993,9 @@ function render(now) {
 
   ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-  if (!started || !locations.length || !map.isStyleLoaded()) return;
-
-  let shake = 0;
+  // Nicht map.isStyleLoaded() prüfen: das ist während der Sprünge oft
+  // false (Kacheln/Spur laden nach) und würde Frames verschlucken.
+  if (!started || !locations.length) return;
 
   if (phase === PHASE.HOPPING) {
     const t = Math.min((clock - hopStart) / hopDur, 1);
@@ -767,22 +1014,21 @@ function render(now) {
     updateTimeline(lerp(yearOf(locations[locIdx]), yearOf(nextLoc), t), locIdx);
     if (t >= 1) onArrival();
 
-  } else if (phase === PHASE.SCREAMING) {
-    const loc = locations[locIdx];
-    [scrX, scrY] = project(loc.lng, loc.lat);
-    shake = showGrave ? 0 : 4;  // no shake once gravestone is showing
-    bubbleTimer += dt;
-    if (bubbleTimer > 80 && bubbleText.length < bubbleTgt.length) {
-      bubbleText += bubbleTgt[bubbleText.length];
-      bubbleTimer = 0;
-    }
-
   } else {
     const loc = locations[locIdx];
     [scrX, scrY] = project(loc.lng, loc.lat);
   }
 
   if (phase !== PHASE.HOPPING) updateTimeline(yearOf(locations[locIdx]), locIdx);
+
+  // Sprechblase Buchstabe für Buchstabe tippen
+  if (bubbleOn && bubbleText.length < bubbleTgt.length) {
+    bubbleTimer += dt;
+    while (bubbleTimer >= TYPE_MS && bubbleText.length < bubbleTgt.length) {
+      bubbleText  += bubbleTgt[bubbleText.length];
+      bubbleTimer -= TYPE_MS;
+    }
+  }
 
   // ── JS-driven fade ────────────────────────────────────────────
   if (fadeOutActive) {
@@ -792,7 +1038,6 @@ function render(now) {
     llamaFadeAlpha = Math.min(1, (clock - fadeStartTime) / FADE_IN_DUR);
     if (llamaFadeAlpha === 1) fadeInActive = false;
   }
-  llamaEl.style.opacity = llamaFadeAlpha;
 
   // Grabstein im Finale
   if (showGrave) {
@@ -800,75 +1045,175 @@ function render(now) {
     drawGravestone(ctx, cx, cy, 1 - llamaFadeAlpha);
   }
 
-  // Random shake offset
-  const ox = shake ? (Math.random() - 0.5) * shake * 2 : 0;
-  const oy = shake ? (Math.random() - 0.5) * shake     : 0;
-
-  // Position llama GIF
+  // Lama positionieren: bewegtes GIF oder eingefrorenes Standbild
   // Anchor: bottom-center of image = feet at (scrX, scrY)
-  llamaEl.style.left      = (scrX - LLAMA_W / 2 + ox) + 'px';
-  llamaEl.style.top       = (scrY - LLAMA_H + oy) + 'px';
-  llamaEl.style.transform = `scaleX(${facingRight ? -1 : 1})`;
-  llamaEl.style.display   = 'block';
+  const shown = frozen ? stillEl : llamaEl;
+  const other = frozen ? llamaEl : stillEl;
+  other.style.display     = 'none';
+  shown.style.display     = 'block';
+  shown.style.left        = (scrX - LLAMA_W / 2) + 'px';
+  shown.style.top         = (scrY - LLAMA_H) + 'px';
+  shown.style.transform   = `scaleX(${facingRight ? -1 : 1})`;
+  shown.style.opacity     = llamaFadeAlpha;
 
   // Shadow ellipse (canvas) – perfectly synced via llamaFadeAlpha
   ctx.save();
   ctx.globalAlpha = 0.25 * llamaFadeAlpha;
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(scrX + ox * 0.5, scrY + 3, 28, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(scrX, scrY + 3, 28, 7, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // Speech bubble during scream – fades with llama
-  if (phase === PHASE.SCREAMING && bubbleText.length > 0 && llamaFadeAlpha > 0.05) {
-    // Head is roughly at top-center of the GIF
-    const dir  = facingRight ? 1 : -1;
-    const headX = scrX + dir * 38;
-    const headY = scrY - LLAMA_H + 28;  // top area of GIF
-
-    const bw = bubbleText.length * 11 + 24;
-    const bh = 32;
-    const bx = headX + dir * 10;
-    const by = headY - bh - 8;
-
-    ctx.save();
-    ctx.globalAlpha = llamaFadeAlpha;
-
-    const r    = 8;                                      // corner radius
-    const tailBX = facingRight ? bx + 14 : bx + bw - 22;
-    const tx1  = tailBX, tx2 = tailBX + 7, tx3 = tailBX + 14;
-    const ty   = by + bh, tipY = by + bh + 10;
-
-    // Single path: rounded rect + tail as one shape → one stroke, no seam
-    ctx.beginPath();
-    ctx.moveTo(bx + r, by);
-    ctx.lineTo(bx + bw - r, by);
-    ctx.arcTo(bx + bw, by,     bx + bw, by + r,     r);
-    ctx.lineTo(bx + bw, by + bh - r);
-    ctx.arcTo(bx + bw, by + bh, bx + bw - r, by + bh, r);
-    ctx.lineTo(tx3, ty);
-    ctx.lineTo(tx2, tipY);   // tail tip
-    ctx.lineTo(tx1, ty);
-    ctx.lineTo(bx + r, by + bh);
-    ctx.arcTo(bx, by + bh, bx, by + bh - r, r);
-    ctx.lineTo(bx, by + r);
-    ctx.arcTo(bx, by, bx + r, by, r);
-    ctx.closePath();
-
-    ctx.fillStyle   = '#FFFDE4';
-    ctx.strokeStyle = '#444';
-    ctx.lineWidth   = 2;
-    ctx.fill();
-    ctx.stroke();
-
-    // Text
-    ctx.fillStyle = '#B71C1C';
-    ctx.font = 'bold 15px "Courier New", monospace';
-    ctx.fillText(bubbleText, bx + 12, by + 21);
-
-    ctx.restore();
+  // Gedankenwolke unterwegs: blendet am Anfang ein, kurz vor der Landung aus
+  if (phase === PHASE.HOPPING && thoughtText) {
+    const t = (clock - hopStart) / hopDur;
+    const a = Math.min(smooth(clamp01((t - 0.04) / 0.1)), 1 - smooth(clamp01((t - 0.86) / 0.1)));
+    if (a > 0.01) drawThought(thoughtText, a * llamaFadeAlpha);
   }
+
+  // Sprechblase am Ort
+  if (bubbleOn && bubbleText.length > 0 && llamaFadeAlpha > 0.05) {
+    drawSpeech(bubbleTgt, bubbleText.length, llamaFadeAlpha);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SPRECHBLASE & GEDANKENWOLKE
+// ═══════════════════════════════════════════════════════════════
+function wrapLines(c, text, maxW) {
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (cur && c.measureText(test).width > maxW) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+// Box neben dem Kopf, in Blickrichtung, immer im sichtbaren Bereich
+function bubbleBox(c, lines, lineH, padX, padY, gapAbove) {
+  const textW = Math.max(...lines.map(l => c.measureText(l).width));
+  const bw    = Math.ceil(textW) + padX * 2;
+  const bh    = lines.length * lineH + padY * 2;
+  const dir   = facingRight ? 1 : -1;
+  const headX = scrX + dir * 38;
+  const headY = scrY - LLAMA_H + 28;
+  let bx = facingRight ? headX + 6 : headX - 6 - bw;
+  let by = headY - bh - gapAbove;
+  bx = Math.max(8, Math.min(window.innerWidth - bw - 8, bx));
+  by = Math.max(8, by);
+  return { bx, by, bw, bh, headX, headY };
+}
+
+// full: ganzer Satz (für das Layout), shown: Anzahl schon getippter Zeichen
+function drawSpeech(full, shown, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = 'bold 15px "Courier New", monospace';
+  const lineH = 19, padX = 12, padY = 9;
+  const lines = wrapLines(ctx, full, 260);
+  const { bx, by, bw, bh, headX } = bubbleBox(ctx, lines, lineH, padX, padY, 18);
+
+  const r   = 8;
+  const tx1 = Math.max(bx + r + 2, Math.min(bx + bw - r - 16, headX - 7));
+  const tx2 = tx1 + 7, tx3 = tx1 + 14;
+  const ty  = by + bh, tipY = by + bh + 12;
+
+  // Rounded rect + tail as one shape → one stroke, no seam
+  ctx.beginPath();
+  ctx.moveTo(bx + r, by);
+  ctx.lineTo(bx + bw - r, by);
+  ctx.arcTo(bx + bw, by,      bx + bw, by + r,      r);
+  ctx.lineTo(bx + bw, by + bh - r);
+  ctx.arcTo(bx + bw, by + bh, bx + bw - r, by + bh, r);
+  ctx.lineTo(tx3, ty);
+  ctx.lineTo(tx2, tipY);
+  ctx.lineTo(tx1, ty);
+  ctx.lineTo(bx + r, by + bh);
+  ctx.arcTo(bx, by + bh, bx, by + bh - r, r);
+  ctx.lineTo(bx, by + r);
+  ctx.arcTo(bx, by, bx + r, by, r);
+  ctx.closePath();
+  ctx.fillStyle   = '#FFFDE4';
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth   = 2;
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle    = '#B71C1C';
+  ctx.textBaseline = 'top';
+  let left = shown;
+  lines.forEach((line, i) => {
+    if (left <= 0) return;
+    ctx.fillText(line.slice(0, left), bx + padX, by + padY + i * lineH + 1);
+    left -= line.length + 1;
+  });
+  ctx.restore();
+}
+
+// Die Wolke wird erst deckend auf eine eigene Fläche gezeichnet und dann
+// als Ganzes überblendet – sonst schimmern beim Ein-/Ausblenden die
+// überlappenden Kreise durch.
+const thoughtCanvas = document.createElement('canvas');
+const tctx = thoughtCanvas.getContext('2d');
+
+function drawThought(text, alpha) {
+  const dpr = window.devicePixelRatio || 1;
+  if (thoughtCanvas.width !== overlay.width || thoughtCanvas.height !== overlay.height) {
+    thoughtCanvas.width  = overlay.width;
+    thoughtCanvas.height = overlay.height;
+  }
+  const c = tctx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+  c.font = 'italic 15px Georgia, "Times New Roman", serif';
+  const lineH = 20, padX = 14, padY = 10;
+  const lines = wrapLines(c, text, 230);
+  const { bx, by, bw, bh, headX, headY } = bubbleBox(c, lines, lineH, padX, padY, 46);
+
+  // Wolkenrand aus Kreisen entlang des Rechtecks
+  const R = 12, STEP = 17;
+  const circles = [];
+  const nx = Math.max(1, Math.round(bw / STEP)), ny = Math.max(1, Math.round(bh / STEP));
+  for (let i = 0; i <= nx; i++) {
+    const x = bx + bw * i / nx;
+    circles.push([x, by, R], [x, by + bh, R]);
+  }
+  for (let i = 1; i < ny; i++) {
+    const y = by + bh * i / ny;
+    circles.push([bx, y, R], [bx + bw, y, R]);
+  }
+
+  // Kleine Kreise von der Wolke zum Kopf
+  const sx = Math.max(bx + R, Math.min(bx + bw - R, headX));
+  const sy = by + bh + R + 3;
+  const ex = headX, ey = headY - 4;
+  const dots = [[0.15, 6], [0.5, 4.5], [0.85, 3]].map(([k, r]) => [lerp(sx, ex, k), lerp(sy, ey, k), r]);
+
+  c.strokeStyle = '#666';
+  c.fillStyle   = '#fff';
+  // 1) Umrisse aller Kreise, 2) Füllung darüber → nur der Außenrand bleibt sichtbar
+  c.lineWidth = 3.5;
+  circles.forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke(); });
+  circles.forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); });
+  c.fillRect(bx, by, bw, bh);
+  c.lineWidth = 1.8;
+  dots.forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.stroke(); });
+
+  c.fillStyle    = '#555';
+  c.textBaseline = 'top';
+  lines.forEach((line, i) => c.fillText(line, bx + padX, by + padY + i * lineH + 1));
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(thoughtCanvas, 0, 0);
+  ctx.restore();
 }
 
 requestAnimationFrame(render);
@@ -884,13 +1229,9 @@ let started        = false;
 
 // Show arrival sequence at the very first location (loc[0]) before any hop
 function showFirstArrival() {
-  locIdx = 0;
   const loc = locations[0];
   [scrX, scrY] = project(loc.lng, loc.lat);
-  startScream(loc);
-  playScream();
-  map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 800, essential: true });
-  after(SCREAM_DUR + 200, () => { phase = PHASE.IDLE; startHop(); });
+  arriveAt(0);
 }
 
 // ── Kiosk-Modus & Wake Lock ───────────────────────────────────
