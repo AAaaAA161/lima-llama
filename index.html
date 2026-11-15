@@ -35,7 +35,7 @@
 
     #label {
       position: absolute;
-      bottom: 36px; left: 50%;
+      bottom: 100px; left: 50%;
       transform: translateX(-50%);
       background: rgba(10, 10, 30, 0.88);
       color: #fff;
@@ -126,6 +126,58 @@
       transition: background 0.2s;
     }
     #fullscreen-btn:hover { background: rgba(40,40,80,0.95); }
+
+    /* Zeitleiste */
+    #timeline {
+      position: absolute;
+      left: 50%; bottom: 44px;   /* Abstand zu Mapbox-Logo und Attribution */
+      transform: translateX(-50%);
+      width: min(70vw, 900px);
+      height: 34px;
+      z-index: 20;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s;
+    }
+    #timeline.show { opacity: 1; }
+    #tl-track {
+      position: absolute; left: 0; right: 0; bottom: 6px;
+      height: 3px; border-radius: 2px;
+      background: rgba(10,10,30,0.45);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
+    }
+    #tl-fill {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 0; border-radius: 2px;
+      background: #B71C1C;
+    }
+    .tl-tick {
+      position: absolute; bottom: 3px;
+      width: 9px; height: 9px; margin-left: -4.5px;
+      border-radius: 50%;
+      background: #fff; border: 2px solid rgba(10,10,30,0.7);
+      transition: background 0.3s;
+    }
+    .tl-tick.passed { background: #B71C1C; }
+    .tl-end {
+      position: absolute; bottom: -16px;
+      font-size: 11px; color: rgba(10,10,30,0.8);
+      text-shadow: 0 0 4px rgba(255,255,255,0.9);
+    }
+    #tl-start { left: 0; transform: translateX(-50%); }
+    #tl-stop  { right: 0; transform: translateX(50%); }
+    #tl-marker {
+      position: absolute; bottom: 14px;
+      transform: translateX(-50%);
+      background: rgba(10,10,30,0.88); color: #fff;
+      font-size: 12px; letter-spacing: 1px;
+      padding: 2px 8px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* Kiosk-Modus (?kiosk) */
+    body.kiosk, body.kiosk * { cursor: none !important; }
+    body.kiosk #fullscreen-btn { display: none; }
   </style>
 </head>
 <body>
@@ -141,6 +193,13 @@
   <div id="progress-bar"><div id="progress-fill"></div></div>
 </div>
 <div id="label"></div>
+<div id="timeline">
+  <div id="tl-track"><div id="tl-fill"></div></div>
+  <div id="tl-ticks"></div>
+  <span class="tl-end" id="tl-start"></span>
+  <span class="tl-end" id="tl-stop"></span>
+  <div id="tl-marker"></div>
+</div>
 <div id="title">Lima Llama 🦙</div>
 <button id="fullscreen-btn" title="Vollbild">⛶</button>
 
@@ -335,8 +394,8 @@ let phase       = PHASE.IDLE;
 let facingRight = true;
 
 let hopStart    = 0, hopDur = 0;
-let hopFromLng  = 0, hopFromLat = 0;
-let hopToLng    = 0, hopToLat   = 0;
+let hopPath     = [];
+let hopSamePlace = false;
 let hopZoomFrom = 5, hopZoomTo  = 5;
 const ARC_H     = 100;
 const HOP_ZOOM_DUR = 600;
@@ -350,8 +409,7 @@ let bubbleTimer  = 0;
 
 let scrX = 0, scrY = 0;
 
-let showCross = false;
-let crossX = 0, crossY = 0;
+let showGrave = false;
 
 // JS-driven fade (keeps llama, shadow and bubble perfectly in sync)
 let llamaFadeAlpha = 1;
@@ -366,6 +424,117 @@ let labelHideAt = 0;
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function smooth(t) { return t * t * (3 - 2 * t); }
+
+// ── Großkreis (Flugbogen) ─────────────────────────────────────
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const PATH_STEPS = 96;
+
+function toVec(lng, lat) {
+  const a = lng * D2R, b = lat * D2R;
+  return [Math.cos(b) * Math.cos(a), Math.cos(b) * Math.sin(a), Math.sin(b)];
+}
+
+// Punkte entlang des Großkreises von → nach, Längengrade fortlaufend
+// (ohne Sprung an der Datumsgrenze)
+function greatCirclePath(from, to) {
+  const v1 = toVec(from.lng, from.lat), v2 = toVec(to.lng, to.lat);
+  const dot = Math.max(-1, Math.min(1, v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]));
+  const omega = Math.acos(dot);
+  const pts = [];
+  let prevLng = from.lng;
+  for (let i = 0; i <= PATH_STEPS; i++) {
+    const t = i / PATH_STEPS;
+    let lng, lat;
+    if (omega < 1e-6) {
+      lng = lerp(from.lng, to.lng, t); lat = lerp(from.lat, to.lat, t);
+    } else {
+      const s  = Math.sin(omega);
+      const w1 = Math.sin((1 - t) * omega) / s, w2 = Math.sin(t * omega) / s;
+      const x = w1*v1[0] + w2*v2[0], y = w1*v1[1] + w2*v2[1], z = w1*v1[2] + w2*v2[2];
+      lng = Math.atan2(y, x) * R2D;
+      lat = Math.asin(Math.max(-1, Math.min(1, z))) * R2D;
+    }
+    while (lng - prevLng >  180) lng -= 360;
+    while (lng - prevLng < -180) lng += 360;
+    prevLng = lng;
+    pts.push([lng, lat]);
+  }
+  return pts;
+}
+
+// Position auf dem Pfad bei t (0..1)
+function pointOnPath(pts, t) {
+  const f = t * (pts.length - 1);
+  const i = Math.min(Math.floor(f), pts.length - 2);
+  const k = f - i;
+  return [lerp(pts[i][0], pts[i+1][0], k), lerp(pts[i][1], pts[i+1][1], k)];
+}
+
+// ── Zeitleiste ────────────────────────────────────────────────
+const tlEl     = document.getElementById('timeline');
+const tlFill   = document.getElementById('tl-fill');
+const tlMarker = document.getElementById('tl-marker');
+let tlMin = 0, tlMax = 1, tlTicks = [], tlLastIdx = -1;
+
+function yearOf(loc) { return parseInt(loc.year, 10) || 0; }
+function tlPos(year) { return (year - tlMin) / Math.max(1, tlMax - tlMin) * 100; }
+
+function buildTimeline() {
+  const years = locations.map(yearOf);
+  tlMin = Math.min(...years);
+  tlMax = Math.max(...years);
+  document.getElementById('tl-start').textContent = tlMin;
+  document.getElementById('tl-stop').textContent  = tlMax;
+  const box = document.getElementById('tl-ticks');
+  tlTicks = years.map(y => {
+    const d = document.createElement('div');
+    d.className = 'tl-tick';
+    d.style.left = tlPos(y) + '%';
+    box.appendChild(d);
+    return d;
+  });
+}
+
+// year: aktuelle (ggf. gebrochene) Jahreszahl, idx: zuletzt erreichte Station
+function updateTimeline(year, idx) {
+  const p = tlPos(year) + '%';
+  tlFill.style.width   = p;
+  tlMarker.style.left  = p;
+  tlMarker.textContent = Math.round(year);
+  if (idx !== tlLastIdx) {
+    tlTicks.forEach((d, i) => d.classList.toggle('passed', i <= idx));
+    tlLastIdx = idx;
+  }
+}
+
+// ── Routen-Spur ───────────────────────────────────────────────
+let trailDone = [];   // abgeschlossene Sprünge (je ein Koordinaten-Array)
+
+function setTrail(partial) {
+  const src = map.getSource('trail');
+  if (!src) return;
+  const lines = partial && partial.length > 1 ? trailDone.concat([partial]) : trailDone;
+  src.setData({
+    type: 'FeatureCollection',
+    features: lines.map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c } }))
+  });
+}
+
+function addTrailLayer() {
+  map.addSource('trail', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({
+    id: 'trail',
+    type: 'line',
+    source: 'trail',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#B71C1C',
+      'line-width': 2.5,
+      'line-opacity': 0.75,
+      'line-dasharray': [1.5, 1.5]
+    }
+  });
+}
 function project(lng, lat) { const p = map.project([lng, lat]); return [p.x, p.y]; }
 
 function showLabel(loc) {
@@ -389,12 +558,11 @@ function startHop() {
   const from = locations[locIdx];
   const to   = locations[(locIdx + 1) % locations.length];
 
-  hopFromLng = from.lng; hopFromLat = from.lat;
-  hopToLng   = to.lng;   hopToLat   = to.lat;
+  hopPath = greatCirclePath(from, to);
 
   const dlng = to.lng - from.lng, dlat = to.lat - from.lat;
   const dist = Math.sqrt(dlng*dlng + dlat*dlat);
-  const samePlace = dist < 0.01;
+  const samePlace = hopSamePlace = dist < 0.01;
 
   // Blickrichtung nur ändern, wenn es wirklich nach links/rechts geht
   if (!samePlace) facingRight = to.lng >= from.lng;
@@ -419,6 +587,8 @@ function startHop() {
 function onArrival() {
   locIdx = (locIdx + 1) % locations.length;
   stopMelody();
+  if (!hopSamePlace) trailDone.push(hopPath);
+  setTrail();
 
   const loc    = locations[locIdx];
   const isLast = locIdx === locations.length - 1;
@@ -427,14 +597,12 @@ function onArrival() {
   map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 1000, essential: true });
 
   if (isLast) {
-    // Finale: bell toll, llama fades, cross appears, 5s pause, restart
+    // Finale: bell toll, llama fades, gravestone appears, 5s pause, restart
     playBell();
 
-    // After bubble types in (~1.5s): start JS-driven fade + show cross
+    // After bubble types in (~1.5s): start JS-driven fade + show gravestone
     after(1500, () => {
-      crossX = scrX;
-      crossY = scrY;
-      showCross     = true;
+      showGrave     = true;
       fadeOutActive = true;
       fadeInActive  = false;
       fadeStartTime = clock;
@@ -442,12 +610,14 @@ function onArrival() {
 
     // After fade (1s) + 5s pause → restart at first location
     after(1500 + FADE_OUT_DUR + 5000, () => {
-      showCross      = false;
+      showGrave      = false;
       phase          = PHASE.IDLE;
       bubbleText     = '';
       locIdx         = 0;
       llamaFadeAlpha = 0;
       fadeOutActive  = false;
+      trailDone      = [];
+      setTrail();
       const first = locations[0];
       map.flyTo({ center: [first.lng, first.lat], zoom: 5, duration: 1200, essential: true });
       after(1200, () => {
@@ -464,98 +634,95 @@ function onArrival() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// GRAVE CROSS
+// GRABSTEIN
 // ═══════════════════════════════════════════════════════════════
-function drawGraveCross(ctx, cx, cy, alpha) {
+function drawGravestone(ctx, cx, cy, alpha) {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  const vw   = 13;          // vertical bar width
-  const hh   = 12;          // horizontal bar height
-  const top  = cy - 60;     // top of vertical bar
-  const bot  = cy + 2;      // bottom of vertical bar
-  const armL = cx - 30;     // left end of crossbar
-  const armR = cx + 30;     // right end of crossbar
-  const armT = cy - 38;     // top of crossbar
-  const armB = armT + hh;
-  const r    = 5;            // corner radius
+  const w     = 52;              // Breite des Steins
+  const h     = 68;              // Höhe bis zum Scheitel
+  const left  = cx - w / 2;
+  const right = cx + w / 2;
+  const bot   = cy + 2;          // Unterkante (steht auf dem Ort)
+  const archR = w / 2;           // runder Abschluss oben
+  const archY = bot - h + archR; // Mittelpunkt des Bogens
 
-  function rrect(x, y, w, h) {
+  // Erdhügel
+  const dirtG = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, 34);
+  dirtG.addColorStop(0, '#8a7a5a');
+  dirtG.addColorStop(1, '#4e4330');
+  ctx.fillStyle = dirtG;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 6, 36, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Schlagschatten
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 12, cy + 10, 30, 6, -0.12, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Steinform: Rechteck mit Rundbogen
+  function stonePath() {
     ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y,     x + w, y + r,     r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-    ctx.lineTo(x + r, y + h);
-    ctx.arcTo(x, y + h, x, y + h - r, r);
-    ctx.lineTo(x, y + r);
-    ctx.arcTo(x, y, x + r, y, r);
+    ctx.moveTo(left, bot);
+    ctx.lineTo(left, archY);
+    ctx.arc(cx, archY, archR, Math.PI, 0);
+    ctx.lineTo(right, bot);
     ctx.closePath();
   }
 
-  // Dirt mound
-  const dirtG = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, 30);
-  dirtG.addColorStop(0, '#b8884a');
-  dirtG.addColorStop(1, '#6b4e22');
-  ctx.fillStyle = dirtG;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 7, 30, 11, 0, 0, Math.PI * 2);
+  // Granit: links hell, rechts dunkel (wirkt gewölbt)
+  const stoneG = ctx.createLinearGradient(left, 0, right, 0);
+  stoneG.addColorStop(0,    '#8c9096');
+  stoneG.addColorStop(0.25, '#c9ccd0');
+  stoneG.addColorStop(0.6,  '#a4a8ae');
+  stoneG.addColorStop(1,    '#6a6e74');
+
+  stonePath();
+  ctx.fillStyle = stoneG;
   ctx.fill();
-
-  // Cast shadow (darkened ellipse, offset)
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
-  ctx.beginPath();
-  ctx.ellipse(cx + 8, cy + 14, 24, 6, -0.15, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Wood gradient (left→right gives cylindrical look on vertical bar)
-  const woodG = ctx.createLinearGradient(cx - vw / 2, 0, cx + vw / 2, 0);
-  woodG.addColorStop(0,    '#5a2a08');
-  woodG.addColorStop(0.18, '#a04e1a');
-  woodG.addColorStop(0.45, '#d07838');
-  woodG.addColorStop(0.75, '#9a4c18');
-  woodG.addColorStop(1,    '#4a2005');
-
-  // Horizontal bar uses top→bottom gradient
-  const hGrad = ctx.createLinearGradient(0, armT, 0, armB);
-  hGrad.addColorStop(0,   '#c87030');
-  hGrad.addColorStop(0.5, '#a05020');
-  hGrad.addColorStop(1,   '#5c2a08');
-
-  // Draw vertical bar
-  rrect(cx - vw / 2, top, vw, bot - top);
-  ctx.fillStyle   = woodG;
-  ctx.fill();
-  ctx.strokeStyle = '#2e1204';
+  ctx.strokeStyle = '#3d4045';
   ctx.lineWidth   = 1.5;
   ctx.stroke();
 
-  // Draw horizontal bar (on top)
-  rrect(armL, armT, armR - armL, hh);
-  ctx.fillStyle   = hGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#2e1204';
-  ctx.lineWidth   = 1.5;
-  ctx.stroke();
-
-  // Left-edge highlight on vertical bar → gives 3-D depth
-  ctx.strokeStyle = 'rgba(255,195,110,0.38)';
+  // Lichtkante am Bogen
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
   ctx.lineWidth   = 2;
-  ctx.lineCap     = 'round';
   ctx.beginPath();
-  ctx.moveTo(cx - vw / 2 + 3, bot - 5);
-  ctx.lineTo(cx - vw / 2 + 3, armB + 1);
-  ctx.moveTo(cx - vw / 2 + 3, armT - 1);
-  ctx.lineTo(cx - vw / 2 + 3, top + 7);
+  ctx.arc(cx, archY, archR - 3, Math.PI * 1.05, Math.PI * 1.6);
   ctx.stroke();
 
-  // Top highlight on horizontal bar
-  ctx.beginPath();
-  ctx.moveTo(armL + 5, armT + 3);
-  ctx.lineTo(armR - 5, armT + 3);
-  ctx.stroke();
+  // Sockel
+  const baseH = 7;
+  const baseG = ctx.createLinearGradient(0, bot - baseH, 0, bot);
+  baseG.addColorStop(0, '#7d8187');
+  baseG.addColorStop(1, '#55595e');
+  ctx.fillStyle = baseG;
+  ctx.fillRect(left - 5, bot - baseH, w + 10, baseH);
+  ctx.strokeStyle = '#3d4045';
+  ctx.lineWidth   = 1.2;
+  ctx.strokeRect(left - 5, bot - baseH, w + 10, baseH);
+
+  // Gravur: Lebensdaten, eingemeißelt (helle Kante unter dunkler Schrift)
+  const y1 = archY + 4;
+  const y2 = archY + 22;
+  ctx.font         = 'bold 13px Georgia, "Times New Roman", serif';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  function engrave(text, y) {
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText(text, cx + 0.6, y + 0.8);
+    ctx.fillStyle = '#34373b';
+    ctx.fillText(text, cx, y);
+  }
+  engrave(String(tlMin), y1);
+  // kurzer Strich zwischen den Jahren
+  ctx.fillStyle = '#34373b';
+  ctx.fillRect(cx - 6, (y1 + y2) / 2 - 0.75, 12, 1.5);
+  engrave(String(tlMax), y2);
 
   ctx.restore();
 }
@@ -585,20 +752,25 @@ function render(now) {
 
   if (phase === PHASE.HOPPING) {
     const t = Math.min((clock - hopStart) / hopDur, 1);
-    const lng = lerp(hopFromLng, hopToLng, t);
-    const lat = lerp(hopFromLat, hopToLat, t);
+    const [lng, lat] = pointOnPath(hopPath, t);
+    if (!hopSamePlace) {
+      const n = Math.floor(t * (hopPath.length - 1));
+      setTrail(hopPath.slice(0, n + 1).concat([[lng, lat]]));
+    }
     const zt  = smooth(Math.min((clock - hopStart) / HOP_ZOOM_DUR, 1));
     // Follow the llama – Mittelpunkt und Zoom in einem Schritt setzen
     map.jumpTo({ center: [lng, lat], zoom: lerp(hopZoomFrom, hopZoomTo, zt) });
     const [sx, sy] = project(lng, lat);
     scrX = sx;
     scrY = sy - Math.sin(Math.PI * t) * ARC_H;
+    const nextLoc = locations[(locIdx + 1) % locations.length];
+    updateTimeline(lerp(yearOf(locations[locIdx]), yearOf(nextLoc), t), locIdx);
     if (t >= 1) onArrival();
 
   } else if (phase === PHASE.SCREAMING) {
     const loc = locations[locIdx];
     [scrX, scrY] = project(loc.lng, loc.lat);
-    shake = showCross ? 0 : 4;  // no shake once cross is showing
+    shake = showGrave ? 0 : 4;  // no shake once gravestone is showing
     bubbleTimer += dt;
     if (bubbleTimer > 80 && bubbleText.length < bubbleTgt.length) {
       bubbleText += bubbleTgt[bubbleText.length];
@@ -610,6 +782,8 @@ function render(now) {
     [scrX, scrY] = project(loc.lng, loc.lat);
   }
 
+  if (phase !== PHASE.HOPPING) updateTimeline(yearOf(locations[locIdx]), locIdx);
+
   // ── JS-driven fade ────────────────────────────────────────────
   if (fadeOutActive) {
     llamaFadeAlpha = Math.max(0, 1 - (clock - fadeStartTime) / FADE_OUT_DUR);
@@ -620,10 +794,10 @@ function render(now) {
   }
   llamaEl.style.opacity = llamaFadeAlpha;
 
-  // Grabkreuz im Finale
-  if (showCross) {
+  // Grabstein im Finale
+  if (showGrave) {
     const [cx, cy] = project(locations[locIdx].lng, locations[locIdx].lat);
-    drawGraveCross(ctx, cx, cy, 1 - llamaFadeAlpha);
+    drawGravestone(ctx, cx, cy, 1 - llamaFadeAlpha);
   }
 
   // Random shake offset
@@ -719,14 +893,38 @@ function showFirstArrival() {
   after(SCREAM_DUR + 200, () => { phase = PHASE.IDLE; startHop(); });
 }
 
-startScreen.addEventListener('click', () => {
+// ── Kiosk-Modus & Wake Lock ───────────────────────────────────
+// ?kiosk in der URL: startet ohne Klick und blendet Mauszeiger und
+// Vollbild-Knopf aus. Ton ohne Klick erlaubt der Browser nur mit
+// entsprechender Einstellung (siehe README).
+const KIOSK = new URLSearchParams(location.search).has('kiosk');
+if (KIOSK) document.body.classList.add('kiosk');
+
+let wakeLock = null;
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator) || document.hidden) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) { /* nicht erlaubt oder nicht unterstützt */ }
+}
+// Der Browser gibt den Wake Lock beim Tab-Wechsel frei → neu anfordern
+document.addEventListener('visibilitychange', () => {
+  if (started && !document.hidden && !wakeLock) requestWakeLock();
+});
+
+function startShow() {
   if (!preloadDone || started) return; // ignore clicks while loading
   started = true;
   ac().resume();
+  requestWakeLock();
   startScreen.classList.add('hidden');
   setTimeout(() => { startScreen.style.display = 'none'; }, 500);
+  tlEl.classList.add('show');
   showFirstArrival(); // start at loc[0] with scream, then hop to loc[1]
-});
+}
+
+startScreen.addEventListener('click', startShow);
 
 // Visit every location silently to warm up the tile cache
 async function preloadTiles() {
@@ -757,6 +955,7 @@ async function preloadTiles() {
   startHint.classList.add('ready');
   document.getElementById('progress-bar').classList.add('done');
   startScreen.classList.add('ready');
+  if (KIOSK) startShow();
 }
 
 // Fullscreen
@@ -782,6 +981,8 @@ map.on('load', async () => {
     return;
   }
   if (!locations.length) return;
+  addTrailLayer();
+  buildTimeline();
   preloadTiles();
 });
 </script>
