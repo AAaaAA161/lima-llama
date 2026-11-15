@@ -38,7 +38,7 @@
     :root { --sign-blue: #1f4e9c; --sign-font: "Arial Narrow", "Helvetica Neue", Arial, sans-serif; }
     #label {
       position: absolute;
-      bottom: 100px; left: 50%;
+      bottom: 150px; left: 50%;
       transform: translate(-50%, 10px);
       background: #fff;
       color: #111;
@@ -210,13 +210,15 @@
     }
     #fullscreen-btn:hover { background: #e8eef8; }
 
-    /* Zeitleiste */
+    /* Zeitleiste
+       Aufbau von unten: Jahreszahlen (untere Reihe) · Strahl · Jahreszahlen
+       (obere Reihe) · laufende Jahresmarke */
     #timeline {
       position: absolute;
-      left: 50%; bottom: 44px;   /* Abstand zu Mapbox-Logo und Attribution */
+      left: 50%; bottom: 30px;   /* Abstand zu Mapbox-Logo und Attribution */
       transform: translateX(-50%);
-      width: min(70vw, 900px);
-      height: 34px;
+      width: min(72vw, 960px);
+      height: 104px;
       z-index: 20;
       pointer-events: none;
       opacity: 0;
@@ -224,42 +226,54 @@
     }
     #timeline.show { opacity: 1; }
     #tl-track {
-      position: absolute; left: 0; right: 0; bottom: 6px;
-      height: 3px; border-radius: 2px;
-      background: rgba(10,10,30,0.45);
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
+      position: absolute; left: 0; right: 0; bottom: 34px;
+      height: 8px; border-radius: 4px;
+      background: rgba(255,255,255,0.85);
+      box-shadow: 0 0 0 1.5px rgba(10,10,30,0.55), 0 2px 6px rgba(0,0,0,0.3);
     }
     #tl-fill {
       position: absolute; left: 0; top: 0; bottom: 0;
-      width: 0; border-radius: 2px;
+      width: 0; border-radius: 4px;
       background: #B71C1C;
     }
     .tl-tick {
-      position: absolute; bottom: 3px;
-      width: 9px; height: 9px; margin-left: -4.5px;
+      position: absolute; bottom: 31px;
+      width: 14px; height: 14px; margin-left: -7px;
       border-radius: 50%;
-      background: #fff; border: 2px solid rgba(10,10,30,0.7);
-      transition: background 0.3s;
+      background: #fff; border: 2.5px solid rgba(10,10,30,0.75);
+      transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
     }
-    .tl-tick.passed { background: #B71C1C; }
-    .tl-end {
-      position: absolute; bottom: -16px;
-      font-size: 11px; color: rgba(10,10,30,0.8);
-      text-shadow: 0 0 4px rgba(255,255,255,0.9);
+    .tl-tick.passed  { background: #B71C1C; }
+    .tl-tick.current {
+      background: #fff; border-color: #B71C1C; border-width: 4px;
+      transform: scale(1.5);
+      box-shadow: 0 0 0 4px rgba(183,28,28,0.25), 0 0 12px rgba(183,28,28,0.6);
+      z-index: 2;
     }
-    #tl-start { left: 0; transform: translateX(-50%); }
-    #tl-stop  { right: 0; transform: translateX(50%); }
+    .tl-year {
+      position: absolute;
+      transform: translateX(-50%);
+      font: bold 14px var(--sign-font);
+      color: #1a1a1a;
+      text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff;
+      transition: color 0.3s, font-size 0.3s;
+      white-space: nowrap;
+    }
+    .tl-year.below { bottom: 8px; }
+    .tl-year.above { bottom: 50px; }
+    .tl-year.current { color: #B71C1C; font-size: 17px; }
     #tl-marker {
-      position: absolute; bottom: 14px;
+      position: absolute; bottom: 70px;
       transform: translateX(-50%);
       background: #fff; color: #111;
-      font: bold 13px var(--sign-font);
+      font: bold 22px var(--sign-font);
       letter-spacing: 0.5px;
-      padding: 1px 8px;
-      border-radius: 2px;
-      border-top: 3px solid var(--sign-blue);
-      border-bottom: 3px solid var(--sign-blue);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      padding: 1px 12px;
+      border-radius: 3px;
+      border-top: 4px solid var(--sign-blue);
+      border-bottom: 4px solid var(--sign-blue);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      z-index: 3;
     }
 
     /* Kiosk-Modus (?kiosk) */
@@ -286,8 +300,7 @@
 <div id="timeline">
   <div id="tl-track"><div id="tl-fill"></div></div>
   <div id="tl-ticks"></div>
-  <span class="tl-end" id="tl-start"></span>
-  <span class="tl-end" id="tl-stop"></span>
+  <div id="tl-years"></div>
   <div id="tl-marker"></div>
 </div>
 <div id="title">Lima Llama 🦙</div>
@@ -575,7 +588,7 @@ function pointOnPath(pts, t) {
 const tlEl     = document.getElementById('timeline');
 const tlFill   = document.getElementById('tl-fill');
 const tlMarker = document.getElementById('tl-marker');
-let tlMin = 0, tlMax = 1, tlTicks = [], tlLastIdx = -1;
+let tlMin = 0, tlMax = 1, tlTicks = [], tlYears = {}, tlLastKey = '';
 
 function yearOf(loc) { return parseInt(loc.year, 10) || 0; }
 function tlPos(year) { return (year - tlMin) / Math.max(1, tlMax - tlMin) * 100; }
@@ -584,28 +597,52 @@ function buildTimeline() {
   const years = locations.map(yearOf);
   tlMin = Math.min(...years);
   tlMax = Math.max(...years);
-  document.getElementById('tl-start').textContent = tlMin;
-  document.getElementById('tl-stop').textContent  = tlMax;
-  const box = document.getElementById('tl-ticks');
+
+  const ticks = document.getElementById('tl-ticks');
   tlTicks = years.map(y => {
     const d = document.createElement('div');
     d.className = 'tl-tick';
     d.style.left = tlPos(y) + '%';
-    box.appendChild(d);
+    ticks.appendChild(d);
     return d;
+  });
+
+  // Jede Jahreszahl einmal. Liegen zwei zu dicht beieinander, kommt die
+  // zweite in die andere Reihe (unter bzw. über dem Strahl).
+  const box    = document.getElementById('tl-years');
+  const minGap = 46 / Math.max(1, tlEl.offsetWidth) * 100;   // ~46 px in %
+  const last   = { below: -Infinity, above: -Infinity };
+  [...new Set(years)].sort((x, y) => x - y).forEach(y => {
+    const pos = tlPos(y);
+    const row = pos - last.below >= minGap ? 'below'
+              : pos - last.above >= minGap ? 'above'
+              : 'below';
+    last[row] = pos;
+    const el = document.createElement('div');
+    el.className = 'tl-year ' + row;
+    el.style.left = pos + '%';
+    el.textContent = y;
+    box.appendChild(el);
+    tlYears[y] = el;
   });
 }
 
-// year: aktuelle (ggf. gebrochene) Jahreszahl, idx: zuletzt erreichte Station
-function updateTimeline(year, idx) {
+// year: aktuelle (ggf. gebrochene) Jahreszahl, idx: zuletzt erreichte Station,
+// atStation: Lama steht gerade an Station idx → hervorheben
+function updateTimeline(year, idx, atStation) {
   const p = tlPos(year) + '%';
   tlFill.style.width   = p;
   tlMarker.style.left  = p;
   tlMarker.textContent = Math.round(year);
-  if (idx !== tlLastIdx) {
-    tlTicks.forEach((d, i) => d.classList.toggle('passed', i <= idx));
-    tlLastIdx = idx;
-  }
+  const key = idx + ':' + (atStation ? 1 : 0);
+  if (key === tlLastKey) return;
+  tlLastKey = key;
+  const curYear = atStation ? yearOf(locations[idx]) : null;
+  tlTicks.forEach((d, i) => {
+    d.classList.toggle('passed',  i <= idx);
+    d.classList.toggle('current', atStation && i === idx);
+  });
+  Object.entries(tlYears).forEach(([y, el]) => el.classList.toggle('current', +y === curYear));
 }
 
 // ── Routen-Spur ───────────────────────────────────────────────
@@ -1010,7 +1047,7 @@ function render(now) {
     scrX = sx;
     scrY = sy - Math.sin(Math.PI * t) * ARC_H;
     const nextLoc = locations[(locIdx + 1) % locations.length];
-    updateTimeline(lerp(yearOf(locations[locIdx]), yearOf(nextLoc), t), locIdx);
+    updateTimeline(lerp(yearOf(locations[locIdx]), yearOf(nextLoc), t), locIdx, false);
     if (t >= 1) onArrival();
 
   } else {
@@ -1018,7 +1055,7 @@ function render(now) {
     [scrX, scrY] = project(loc.lng, loc.lat);
   }
 
-  if (phase !== PHASE.HOPPING) updateTimeline(yearOf(locations[locIdx]), locIdx);
+  if (phase !== PHASE.HOPPING) updateTimeline(yearOf(locations[locIdx]), locIdx, phase === PHASE.AT_STATION);
 
   // Sprechblase Buchstabe für Buchstabe tippen
   if (bubbleOn && bubbleText.length < bubbleTgt.length) {
@@ -1080,6 +1117,17 @@ function render(now) {
 // ═══════════════════════════════════════════════════════════════
 // SPRECHBLASE & GEDANKENWOLKE
 // ═══════════════════════════════════════════════════════════════
+// Gemeinsamer Stil für Sprech- und Gedankenblase: gleicher Hintergrund,
+// gleicher Rand, gleiche Schrift. Sprechen: Rechteck mit Spitze, gerade
+// Schrift. Denken: Wolke mit Kreisen zum Kopf, kursiv.
+const BUBBLE_FILL = '#fff';
+const BUBBLE_EDGE = '#555';
+const BUBBLE_TEXT = '#333';
+const BUBBLE_EDGE_W = 2;
+const BUBBLE_FONT = '15px Georgia, "Times New Roman", serif';
+const BUBBLE_LINE_H = 20;
+const BUBBLE_MAX_W  = 250;
+
 function wrapLines(c, text, maxW) {
   const words = String(text).split(/\s+/).filter(Boolean);
   const lines = [];
@@ -1112,9 +1160,9 @@ function bubbleBox(c, lines, lineH, padX, padY, gapAbove) {
 function drawSpeech(full, shown, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.font = 'bold 15px "Courier New", monospace';
-  const lineH = 19, padX = 12, padY = 9;
-  const lines = wrapLines(ctx, full, 260);
+  ctx.font = BUBBLE_FONT;
+  const lineH = BUBBLE_LINE_H, padX = 14, padY = 10;
+  const lines = wrapLines(ctx, full, BUBBLE_MAX_W);
   const { bx, by, bw, bh, headX } = bubbleBox(ctx, lines, lineH, padX, padY, 18);
 
   const r   = 8;
@@ -1137,13 +1185,13 @@ function drawSpeech(full, shown, alpha) {
   ctx.lineTo(bx, by + r);
   ctx.arcTo(bx, by, bx + r, by, r);
   ctx.closePath();
-  ctx.fillStyle   = '#FFFDE4';
-  ctx.strokeStyle = '#444';
-  ctx.lineWidth   = 2;
+  ctx.fillStyle   = BUBBLE_FILL;
+  ctx.strokeStyle = BUBBLE_EDGE;
+  ctx.lineWidth   = BUBBLE_EDGE_W;
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle    = '#B71C1C';
+  ctx.fillStyle    = BUBBLE_TEXT;
   ctx.textBaseline = 'top';
   let left = shown;
   lines.forEach((line, i) => {
@@ -1170,9 +1218,9 @@ function drawThought(text, alpha) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   c.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-  c.font = 'italic 15px Georgia, "Times New Roman", serif';
-  const lineH = 20, padX = 14, padY = 10;
-  const lines = wrapLines(c, text, 230);
+  c.font = 'italic ' + BUBBLE_FONT;
+  const lineH = BUBBLE_LINE_H, padX = 14, padY = 10;
+  const lines = wrapLines(c, text, BUBBLE_MAX_W);
   const { bx, by, bw, bh, headX, headY } = bubbleBox(c, lines, lineH, padX, padY, 46);
 
   // Wolkenrand aus Kreisen entlang des Rechtecks
@@ -1194,17 +1242,17 @@ function drawThought(text, alpha) {
   const ex = headX, ey = headY - 4;
   const dots = [[0.15, 6], [0.5, 4.5], [0.85, 3]].map(([k, r]) => [lerp(sx, ex, k), lerp(sy, ey, k), r]);
 
-  c.strokeStyle = '#666';
-  c.fillStyle   = '#fff';
+  c.strokeStyle = BUBBLE_EDGE;
+  c.fillStyle   = BUBBLE_FILL;
   // 1) Umrisse aller Kreise, 2) Füllung darüber → nur der Außenrand bleibt sichtbar
-  c.lineWidth = 3.5;
+  c.lineWidth = BUBBLE_EDGE_W * 2;   // halbe Breite wird von der Füllung verdeckt
   circles.forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke(); });
   circles.forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); });
   c.fillRect(bx, by, bw, bh);
-  c.lineWidth = 1.8;
+  c.lineWidth = BUBBLE_EDGE_W;
   dots.forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.stroke(); });
 
-  c.fillStyle    = '#555';
+  c.fillStyle    = BUBBLE_TEXT;
   c.textBaseline = 'top';
   lines.forEach((line, i) => c.fillText(line, bx + padX, by + padY + i * lineH + 1));
 
