@@ -132,11 +132,11 @@
 
 <div id="map"></div>
 <canvas id="overlay"></canvas>
-<img id="llama" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="llama">
+<img id="llama" class="llama-img" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lama">
 <div id="start-screen">
-  <img src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lima Llama">
+  <img class="llama-img" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lima Llama">
   <h1>Lima Llama</h1>
-  <p id="start-desc">LIMA LLAMA is a world map on which a llama hops between various locations where Günther was arrested, expelled from a country, or became a matter of official record in some way.</p>
+  <p id="start-desc">LIMA LLAMA ist eine Weltkarte, auf der ein Lama zwischen Orten hin- und herhüpft, an denen Günther verhaftet, des Landes verwiesen oder auf andere Weise aktenkundig wurde.</p>
   <p id="start-hint">Lade Karte …</p>
   <div id="progress-bar"><div id="progress-fill"></div></div>
 </div>
@@ -166,14 +166,42 @@ const overlay = document.getElementById('overlay');
 const ctx     = overlay.getContext('2d');
 const llamaEl = document.getElementById('llama');
 
+// Fallback, falls das extern gehostete GIF nicht mehr erreichbar ist
+const LLAMA_FALLBACK = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="378" height="498" viewBox="0 0 378 498">' +
+  '<text x="189" y="420" font-size="360" text-anchor="middle">🦙</text></svg>');
+document.querySelectorAll('.llama-img').forEach(img => {
+  img.addEventListener('error', () => {
+    if (img.src !== LLAMA_FALLBACK) img.src = LLAMA_FALLBACK;
+  });
+});
+
 function resizeOverlay() {
   const dpr = window.devicePixelRatio || 1;
   overlay.width  = window.innerWidth  * dpr;
   overlay.height = window.innerHeight * dpr;
-  ctx.scale(dpr, dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 resizeOverlay();
 window.addEventListener('resize', resizeOverlay);
+
+// ═══════════════════════════════════════════════════════════════
+// SPIEL-UHR
+// Alle Zeitabläufe laufen über diese Uhr. Sie wird nur im Render-Loop
+// weitergezählt, steht also still, solange der Tab im Hintergrund ist.
+// So bleiben Animation, Timer und Ton synchron.
+// ═══════════════════════════════════════════════════════════════
+let clock = 0;
+let timers = [];
+
+function after(ms, fn) { timers.push({ at: clock + ms, fn }); }
+
+function runTimers() {
+  const due = timers.filter(t => t.at <= clock);
+  if (!due.length) return;
+  timers = timers.filter(t => t.at > clock);
+  due.forEach(t => t.fn());
+}
 
 // ═══════════════════════════════════════════════════════════════
 // AUDIO
@@ -185,8 +213,9 @@ function ac() {
 }
 
 const MELODY = [523.25, 659.25, 783.99, 880, 1046.5, 880, 783.99, 659.25, 523.25, 392, 440, 523.25];
-let melodyIdx   = 0;
-let melodyTimer = null;
+const NOTE_INTERVAL = 420;
+let melodyIdx    = 0;
+let melodyActive = false;
 
 function playNote(freq) {
   const a   = ac();
@@ -220,27 +249,32 @@ function playNote(freq) {
   osc.stop(a.currentTime + dur + 0.01);
 }
 
+function melodyTick() {
+  if (!melodyActive) return;
+  playNote(MELODY[melodyIdx % MELODY.length]);
+  melodyIdx++;
+  after(NOTE_INTERVAL, melodyTick);
+}
+
 function startMelody() {
-  if (melodyTimer) return;
-  melodyTimer = setInterval(() => {
-    playNote(MELODY[melodyIdx % MELODY.length]);
-    melodyIdx++;
-  }, 420); // slower, more legato
+  if (melodyActive) return;
+  melodyActive = true;
+  after(NOTE_INTERVAL, melodyTick);
   hummingAudio.currentTime = 0;
   hummingAudio.play().catch(() => {});
 }
 
 function stopMelody() {
-  clearInterval(melodyTimer);
-  melodyTimer = null;
+  melodyActive = false;
   hummingAudio.pause();
 }
 
 const screamAudio  = new Audio('166625__jzazvurek__childs-scream-8.wav');
-const hummingAudio = new Audio('humming.wav');
+const hummingAudio = new Audio('humming.m4a');
 hummingAudio.loop  = true;
 const bellAudio    = new Audio('bell.mp3');
 bellAudio.volume   = 0.1;
+const ALL_AUDIO    = [screamAudio, hummingAudio, bellAudio];
 
 function playScream() {
   screamAudio.currentTime = 0;
@@ -252,6 +286,28 @@ function playBell() {
   bellAudio.play().catch(() => {});
 }
 
+function preloadAudio(a) {
+  return new Promise(resolve => {
+    if (a.readyState >= 4) return resolve();
+    const t = setTimeout(resolve, 5000); // nicht ewig warten
+    a.addEventListener('canplaythrough', () => { clearTimeout(t); resolve(); }, { once: true });
+    a.addEventListener('error',          () => { clearTimeout(t); resolve(); }, { once: true });
+    a.preload = 'auto';
+    a.load();
+  });
+}
+
+// Tab im Hintergrund: Ton anhalten, beim Zurückkehren fortsetzen
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    ALL_AUDIO.forEach(a => a.pause());
+    if (audioCtx) audioCtx.suspend();
+  } else {
+    if (audioCtx) audioCtx.resume();
+    if (melodyActive) hummingAudio.play().catch(() => {});
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════
 // LOCATIONS
 // ═══════════════════════════════════════════════════════════════
@@ -261,6 +317,13 @@ let locIdx    = 0;
 async function loadLocations() {
   const res = await fetch('locations.json');
   locations = await res.json();
+}
+
+function labelText(loc) {
+  let t = '📍 ' + loc.name;
+  if (loc.year)   t += ', ' + loc.year;
+  if (loc.reason) t += ' – ' + loc.reason;
+  return t;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -274,9 +337,11 @@ let facingRight = true;
 let hopStart    = 0, hopDur = 0;
 let hopFromLng  = 0, hopFromLat = 0;
 let hopToLng    = 0, hopToLat   = 0;
+let hopZoomFrom = 5, hopZoomTo  = 5;
 const ARC_H     = 100;
+const HOP_ZOOM_DUR = 600;
+const SAME_PLACE_HOP_DUR = 1500;
 
-let screamStart = 0;
 const SCREAM_DUR = 3200;
 
 let bubbleText   = '';
@@ -297,14 +362,25 @@ const FADE_OUT_DUR = 1000;
 const FADE_IN_DUR  = 900;
 
 const label = document.getElementById('label');
+let labelHideAt = 0;
 
 function lerp(a, b, t) { return a + (b - a) * t; }
+function smooth(t) { return t * t * (3 - 2 * t); }
 function project(lng, lat) { const p = map.project([lng, lat]); return [p.x, p.y]; }
 
-function showLabel(name) {
-  label.textContent = '📍 ' + name;
+function showLabel(loc) {
+  label.textContent = labelText(loc);
   label.classList.add('show');
-  setTimeout(() => label.classList.remove('show'), 3500);
+  const hideAt = labelHideAt = clock + 3500;
+  after(3500, () => { if (labelHideAt === hideAt) label.classList.remove('show'); });
+}
+
+function startScream(loc) {
+  phase       = PHASE.SCREAMING;
+  bubbleText  = '';
+  bubbleTgt   = loc.year || 'AAAAAAH!';
+  bubbleTimer = 0;
+  showLabel(loc);
 }
 
 // ── hop ────────────────────────────────────────────────────────
@@ -315,35 +391,39 @@ function startHop() {
 
   hopFromLng = from.lng; hopFromLat = from.lat;
   hopToLng   = to.lng;   hopToLat   = to.lat;
-  facingRight = to.lng >= from.lng;
 
   const dlng = to.lng - from.lng, dlat = to.lat - from.lat;
-  hopDur = Math.min(6000, Math.max(2000, Math.sqrt(dlng*dlng + dlat*dlat) * 85));
+  const dist = Math.sqrt(dlng*dlng + dlat*dlat);
+  const samePlace = dist < 0.01;
 
-  hopStart = performance.now();
+  // Blickrichtung nur ändern, wenn es wirklich nach links/rechts geht
+  if (!samePlace) facingRight = to.lng >= from.lng;
+
+  // Zoom so the jump distance fits comfortably on screen. Der Zoom wird
+  // im Render-Loop zusammen mit dem Mittelpunkt gesetzt (jumpTo), weil ein
+  // separates easeTo() durch das Mitführen der Karte sofort abbrechen würde.
+  hopZoomFrom = map.getZoom();
+  hopZoomTo   = samePlace
+    ? hopZoomFrom                     // Hüpfer auf der Stelle: kein Zoom-Ruck
+    : Math.max(2, Math.min(8, Math.log2(400 / dist)));
+
+  hopDur = samePlace
+    ? SAME_PLACE_HOP_DUR
+    : Math.min(6000, Math.max(2000, dist * 85));
+
+  hopStart = clock;
   phase    = PHASE.HOPPING;
   startMelody();
-
-  // Zoom so the jump distance fits comfortably on screen.
-  // map.setCenter() in the render loop keeps the llama always visible.
-  const dist = Math.sqrt(dlng*dlng + dlat*dlat);
-  const zoom = Math.max(2, Math.min(8, Math.log2(400 / Math.max(dist, 0.1))));
-  map.easeTo({ zoom, duration: 600, essential: true });
 }
 
 function onArrival() {
   locIdx = (locIdx + 1) % locations.length;
-  phase  = PHASE.SCREAMING;
-  screamStart = performance.now();
-  bubbleText  = '';
-  bubbleTgt   = locations[locIdx].scream || 'AAAAAAH!';
-  bubbleTimer = 0;
   stopMelody();
 
   const loc    = locations[locIdx];
   const isLast = locIdx === locations.length - 1;
 
-  showLabel(loc.name);
+  startScream(loc);
   map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 1000, essential: true });
 
   if (isLast) {
@@ -351,35 +431,35 @@ function onArrival() {
     playBell();
 
     // After bubble types in (~1.5s): start JS-driven fade + show cross
-    setTimeout(() => {
+    after(1500, () => {
       crossX = scrX;
       crossY = scrY;
-      showCross    = true;
+      showCross     = true;
       fadeOutActive = true;
       fadeInActive  = false;
-      fadeStartTime = performance.now();
-    }, 1500);
+      fadeStartTime = clock;
+    });
 
     // After fade (1s) + 5s pause → restart at first location
-    setTimeout(() => {
-      showCross    = false;
-      phase        = PHASE.IDLE;
-      bubbleText   = '';
-      locIdx       = 0;
+    after(1500 + FADE_OUT_DUR + 5000, () => {
+      showCross      = false;
+      phase          = PHASE.IDLE;
+      bubbleText     = '';
+      locIdx         = 0;
       llamaFadeAlpha = 0;
       fadeOutActive  = false;
       const first = locations[0];
       map.flyTo({ center: [first.lng, first.lat], zoom: 5, duration: 1200, essential: true });
-      setTimeout(() => {
+      after(1200, () => {
         fadeInActive  = true;
-        fadeStartTime = performance.now();
-        setTimeout(showFirstArrival, FADE_IN_DUR + 300);
-      }, 1200);
-    }, 1500 + FADE_OUT_DUR + 5000); // ~7.5s total
+        fadeStartTime = clock;
+        after(FADE_IN_DUR + 300, showFirstArrival);
+      });
+    });
 
   } else {
     playScream();
-    setTimeout(() => { phase = PHASE.IDLE; startHop(); }, SCREAM_DUR + 200);
+    after(SCREAM_DUR + 200, () => { phase = PHASE.IDLE; startHop(); });
   }
 }
 
@@ -483,7 +563,8 @@ function drawGraveCross(ctx, cx, cy, alpha) {
 // ═══════════════════════════════════════════════════════════════
 // RENDER LOOP
 // ═══════════════════════════════════════════════════════════════
-let lastT = 0;
+let lastT = null;
+const MAX_FRAME_DT = 100; // nach Tab-Wechsel nicht vorspringen
 
 // Llama image dimensions (GIF: 378x498, displayed at height=130px)
 const LLAMA_H  = 130;
@@ -491,21 +572,24 @@ const LLAMA_W  = Math.round(130 * 378 / 498); // ≈ 99px
 
 function render(now) {
   requestAnimationFrame(render);
-  const dt = now - lastT;
+  const dt = lastT === null ? 0 : Math.min(now - lastT, MAX_FRAME_DT);
   lastT = now;
+  clock += dt;
+  runTimers();
 
   ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-  if (!locations.length || !map.isStyleLoaded()) return;
+  if (!started || !locations.length || !map.isStyleLoaded()) return;
 
   let shake = 0;
 
   if (phase === PHASE.HOPPING) {
-    const t = Math.min((now - hopStart) / hopDur, 1);
+    const t = Math.min((clock - hopStart) / hopDur, 1);
     const lng = lerp(hopFromLng, hopToLng, t);
     const lat = lerp(hopFromLat, hopToLat, t);
-    // Follow the llama – map center tracks current position every frame
-    map.setCenter([lng, lat]);
+    const zt  = smooth(Math.min((clock - hopStart) / HOP_ZOOM_DUR, 1));
+    // Follow the llama – Mittelpunkt und Zoom in einem Schritt setzen
+    map.jumpTo({ center: [lng, lat], zoom: lerp(hopZoomFrom, hopZoomTo, zt) });
     const [sx, sy] = project(lng, lat);
     scrX = sx;
     scrY = sy - Math.sin(Math.PI * t) * ARC_H;
@@ -528,13 +612,19 @@ function render(now) {
 
   // ── JS-driven fade ────────────────────────────────────────────
   if (fadeOutActive) {
-    llamaFadeAlpha = Math.max(0, 1 - (now - fadeStartTime) / FADE_OUT_DUR);
+    llamaFadeAlpha = Math.max(0, 1 - (clock - fadeStartTime) / FADE_OUT_DUR);
     if (llamaFadeAlpha === 0) fadeOutActive = false;
   } else if (fadeInActive) {
-    llamaFadeAlpha = Math.min(1, (now - fadeStartTime) / FADE_IN_DUR);
+    llamaFadeAlpha = Math.min(1, (clock - fadeStartTime) / FADE_IN_DUR);
     if (llamaFadeAlpha === 1) fadeInActive = false;
   }
   llamaEl.style.opacity = llamaFadeAlpha;
+
+  // Grabkreuz im Finale
+  if (showCross) {
+    const [cx, cy] = project(locations[locIdx].lng, locations[locIdx].lat);
+    drawGraveCross(ctx, cx, cy, 1 - llamaFadeAlpha);
+  }
 
   // Random shake offset
   const ox = shake ? (Math.random() - 0.5) * shake * 2 : 0;
@@ -569,6 +659,7 @@ function render(now) {
     const by = headY - bh - 8;
 
     ctx.save();
+    ctx.globalAlpha = llamaFadeAlpha;
 
     const r    = 8;                                      // corner radius
     const tailBX = facingRight ? bx + 14 : bx + bw - 22;
@@ -614,7 +705,6 @@ requestAnimationFrame(render);
 const startScreen  = document.getElementById('start-screen');
 const startHint    = document.getElementById('start-hint');
 const progressFill = document.getElementById('progress-fill');
-let userClicked    = false;
 let preloadDone    = false;
 let started        = false;
 
@@ -623,37 +713,23 @@ function showFirstArrival() {
   locIdx = 0;
   const loc = locations[0];
   [scrX, scrY] = project(loc.lng, loc.lat);
-  phase       = PHASE.SCREAMING;
-  screamStart = performance.now();
-  bubbleText  = '';
-  bubbleTgt   = loc.scream || 'AAAAAAH!';
-  bubbleTimer = 0;
+  startScream(loc);
   playScream();
-  showLabel(loc.name);
   map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 800, essential: true });
-  setTimeout(() => { phase = PHASE.IDLE; startHop(); }, SCREAM_DUR + 200);
+  after(SCREAM_DUR + 200, () => { phase = PHASE.IDLE; startHop(); });
 }
 
-function tryStart() {
-  if (started || !preloadDone || !userClicked) return;
+startScreen.addEventListener('click', () => {
+  if (!preloadDone || started) return; // ignore clicks while loading
   started = true;
   ac().resume();
   startScreen.classList.add('hidden');
   setTimeout(() => { startScreen.style.display = 'none'; }, 500);
   showFirstArrival(); // start at loc[0] with scream, then hop to loc[1]
-}
-
-startScreen.addEventListener('click', () => {
-  if (!preloadDone) return; // ignore clicks while loading
-  userClicked = true;
-  tryStart();
 });
 
 // Visit every location silently to warm up the tile cache
 async function preloadTiles() {
-  const hint = startHint;
-  const fill = progressFill;
-
   function waitIdle() {
     return new Promise(resolve => {
       const t = setTimeout(resolve, 1500); // max wait per location
@@ -661,46 +737,50 @@ async function preloadTiles() {
     });
   }
 
+  const audioReady = Promise.all(ALL_AUDIO.map(preloadAudio));
+
   for (let i = 0; i < locations.length; i++) {
     const loc = locations[i];
     map.jumpTo({ center: [loc.lng, loc.lat], zoom: 5 });
     await waitIdle();
-    fill.style.width = ((i + 1) / locations.length * 100) + '%';
+    progressFill.style.width = ((i + 1) / locations.length * 100) + '%';
   }
 
   // Return to first location
   map.jumpTo({ center: [locations[0].lng, locations[0].lat], zoom: 4 });
   [scrX, scrY] = project(locations[0].lng, locations[0].lat);
   await waitIdle();
+  await audioReady;
 
   preloadDone = true;
-  hint.textContent = 'Klicken zum Starten';
-  hint.classList.add('ready');
+  startHint.textContent = 'Klicken zum Starten';
+  startHint.classList.add('ready');
   document.getElementById('progress-bar').classList.add('done');
   startScreen.classList.add('ready');
-  tryStart();
 }
 
 // Fullscreen
 const fsBtn = document.getElementById('fullscreen-btn');
 fsBtn.addEventListener('click', () => {
   if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen();
-    fsBtn.textContent = '✕';
-    fsBtn.title = 'Vollbild beenden';
+    document.documentElement.requestFullscreen().catch(() => {});
   } else {
     document.exitFullscreen();
   }
 });
 document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement) {
-    fsBtn.textContent = '⛶';
-    fsBtn.title = 'Vollbild';
-  }
+  const fs = !!document.fullscreenElement;
+  fsBtn.textContent = fs ? '✕' : '⛶';
+  fsBtn.title       = fs ? 'Vollbild beenden' : 'Vollbild';
 });
 
 map.on('load', async () => {
-  await loadLocations();
+  try {
+    await loadLocations();
+  } catch (e) {
+    startHint.textContent = 'locations.json konnte nicht geladen werden (lokalen Server benutzen, siehe README)';
+    return;
+  }
   if (!locations.length) return;
   preloadTiles();
 });
