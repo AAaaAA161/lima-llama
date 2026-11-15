@@ -646,13 +646,13 @@ function bulgePath(pts, amount = BULGE, reversed = false) {
 
 // ═══════════════════════════════════════════════════════════════
 // FLUGSTIL: frei erfundene Kurven und Loopings
-// Auf den Bogen kommt eine Schlangenlinie und 0–2 Loopings, jedes Mal
+// Auf den Bogen kommt eine sanfte Schlangenlinie und höchstens ein Looping, jedes Mal
 // zufällig neu. Mit ?klassisch in der URL fliegt das Lama nur den Bogen.
 // ═══════════════════════════════════════════════════════════════
 const FLIGHT_LOOPS     = !new URLSearchParams(location.search).has('klassisch');
-const LOOP_RADIUS      = 0.06;   // Looping-Radius als Anteil der Strecke
+const LOOP_RADIUS      = 0.04;   // Looping-Radius als Anteil der Strecke
 const LOOP_HALF_WIN    = 0.07;   // halbe Dauer eines Loopings (Anteil der Flugzeit)
-const SAME_PLACE_LOOP  = 0.9;    // Looping auf der Stelle: Radius in Grad
+const SAME_PLACE_LOOP  = 0.6;    // Looping auf der Stelle: Radius in Grad
 const FLIGHT_SAMPLES   = 300;
 
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -698,11 +698,11 @@ function addLoops(base) {
   const n = base.length - 1;
   const L = Math.hypot(base[n][0] - base[0][0], base[n][1] - base[0][1]);
 
-  // Schlangenlinie: 1,5–3,5 Wellen, an Start und Ziel ausgeblendet
-  const waves = rand(1.5, 3.5), amp = rand(0.03, 0.07) * L, phase = rand(0, 2 * Math.PI);
+  // Sanfte Schlangenlinie: 1–2 Wellen, an Start und Ziel ausgeblendet
+  const waves = rand(1, 2), amp = rand(0.015, 0.035) * L, phase = rand(0, 2 * Math.PI);
 
-  // 0–2 Loopings an zufälligen Stellen, nicht zu nah an Start/Ziel
-  const count = L > 3 ? (Math.random() < 0.5 ? 1 : 2) : (Math.random() < 0.7 ? 1 : 0);
+  // Höchstens ein Looping, nicht zu nah an Start/Ziel
+  const count = Math.random() < (L > 3 ? 0.6 : 0.35) ? 1 : 0;
   const loops = [];
   for (let k = 0; k < count; k++) {
     const t0 = count === 1 ? rand(0.3, 0.7) : (k === 0 ? rand(0.22, 0.4) : rand(0.6, 0.78));
@@ -943,10 +943,10 @@ function startHop() {
   hopDur = samePlace
     ? SAME_PLACE_HOP_DUR
     : Math.min(6000, Math.max(2000, dist * 85));
-  // Kurven und Loopings verlängern den Weg → etwas mehr Zeit (max. +60 %)
+  // Kurven und Loopings verlängern den Weg → etwas mehr Zeit (max. +40 %)
   if (FLIGHT_LOOPS) {
     const ratio = samePlace ? 2 : pathLength(hopPath) / Math.max(dist, 1e-6);
-    hopDur *= Math.min(1.6, Math.max(1, ratio * 0.8));
+    hopDur *= Math.min(1.4, Math.max(1, ratio * 0.8));
   }
   hopLastLng = hopPath[0][0];
   // Genug Zeit, um den Gedanken zu lesen
