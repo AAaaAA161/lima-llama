@@ -1,6 +1,6 @@
 # Lima Llama 🦙
 
-Eine Weltkarte, auf der ein Lama zwischen Orten hin- und herhüpft, an denen Günther verhaftet, des Landes verwiesen oder auf andere Weise aktenkundig wurde. Unterwegs denkt das Lama in einer Gedankenwolke an den nächsten Ort. Dort erscheint ein Ortsschild, und das Lama sagt etwas in der Sprechblase. Gibt es für die Station eine Akte, erstarrt das Lama, ein roter BUSTED-Stempel knallt aufs Bild und die Akte mit den Verurteilungen öffnet sich. Im Finale läutet eine Glocke, das Lama verblasst, ein Grabstein mit den Lebensdaten erscheint, danach beginnt die Runde von vorn.
+Eine Weltkarte, auf der ein Lama zwischen Orten hin- und herhüpft, an denen Günther verhaftet, des Landes verwiesen oder auf andere Weise aktenkundig wurde. Unterwegs denkt das Lama in einer Gedankenwolke an den nächsten Ort. Dort erscheint ein Ortsschild, und das Lama sagt etwas in der Sprechblase. Gibt es für die Station eine Akte, erstarrt das Lama, ein roter BUSTED-Stempel knallt mit einem Knall aufs Bild und die Akte mit den Verurteilungen öffnet sich. Im Finale läutet eine Glocke, das Lama verblasst, ein Grabstein mit den Lebensdaten erscheint, danach beginnt die Runde von vorn.
 
 ## Starten
 
@@ -45,11 +45,11 @@ Damit der Bildschirm nicht ausgeht, fordert die Seite einen Wake Lock an. Er fun
 | `say`     | optional, Satz des Lamas **an dieser Station** (Sprechblase) |
 | `akte`    | optional, Liste von Verurteilungen. Wenn vorhanden: BUSTED-Stempel + Akte |
 
-Jeder Eintrag in `akte` hat die Felder `datum`, `behoerde`, `vorwurf`, `urteil`. Leere Felder werden nicht angezeigt:
+Jeder Eintrag in `akte` hat die Felder `datum`, `behoerde`, `vorwurf`. Leere Felder werden nicht angezeigt:
 
 ```json
 "akte": [
-  { "datum": "12.03.1976", "behoerde": "Landesgericht Salzburg", "vorwurf": "…", "urteil": "…" }
+  { "datum": "12.03.1976", "behoerde": "Landesgericht Salzburg", "vorwurf": "…" }
 ]
 ```
 
@@ -67,6 +67,6 @@ Der Token in `index.html` ist ein öffentlicher `pk.`-Token und im Browser ohneh
 
 - `index.html`: die gesamte Anwendung (Mapbox GL JS + Canvas-Overlay)
 - `locations.json`: Stationen
-- `humming.m4a`, `bell.mp3`, `166625__jzazvurek__childs-scream-8.wav`: Ton
+- `humming.m4a`, `bell.mp3`, `boom.ogg`, `166625__jzazvurek__childs-scream-8.wav`: Ton
 
 Quellen der Medien: siehe [CREDITS.md](CREDITS.md). Lizenz des Codes: siehe [LICENSE](LICENSE).

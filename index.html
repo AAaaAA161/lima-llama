@@ -112,7 +112,6 @@
     }
     .akte-entry dt { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #6b5a3a; padding-top: 3px; }
     .akte-entry dd { font-weight: bold; }
-    .akte-hint { font-size: 11px; color: #6b5a3a; margin-top: 12px; text-align: right; }
     #stamp {
       position: absolute; left: 50%; top: 50%;
       z-index: 45;
@@ -424,7 +423,13 @@ const hummingAudio = new Audio('humming.m4a');
 hummingAudio.loop  = true;
 const bellAudio    = new Audio('bell.mp3');
 bellAudio.volume   = 0.1;
-const ALL_AUDIO    = [screamAudio, hummingAudio, bellAudio];
+const boomAudio    = new Audio('boom.ogg');
+const ALL_AUDIO    = [screamAudio, hummingAudio, bellAudio, boomAudio];
+
+function playBoom() {
+  boomAudio.currentTime = 0;
+  boomAudio.play().catch(() => {});
+}
 
 function playScream() {
   screamAudio.currentTime = 0;
@@ -772,7 +777,7 @@ function finale() {
 // dann öffnet sich die Akte. Weiter nach Lesezeit oder per Klick.
 // ═══════════════════════════════════════════════════════════════
 const STAMP_T = 'translate(-50%, -50%) rotate(-14deg)';
-const AKTE_FIELDS = [['datum', 'Datum'], ['behoerde', 'Behörde'], ['vorwurf', 'Vorwurf'], ['urteil', 'Urteil']];
+const AKTE_FIELDS = [['datum', 'Datum'], ['behoerde', 'Behörde'], ['vorwurf', 'Vorwurf']];
 
 function freezeLlama() {
   const dpr = window.devicePixelRatio || 1;
@@ -817,13 +822,6 @@ function fillAkte(loc) {
     });
     akteEl.appendChild(dl);
   });
-
-  if (!KIOSK) {
-    const hint = document.createElement('div');
-    hint.className = 'akte-hint';
-    hint.textContent = 'Klicken zum Weiterspielen';
-    akteEl.appendChild(hint);
-  }
 }
 
 // Stempel wandert von der Bildmitte auf die rechte untere Ecke der Akte
@@ -844,6 +842,7 @@ function busted(loc, done) {
   stopMelody();
   freezeLlama();
   playScream();
+  playBoom();
 
   stampEl.removeAttribute('style');
   stampEl.className = '';
