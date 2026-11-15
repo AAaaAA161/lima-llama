@@ -438,7 +438,13 @@ hummingAudio.loop  = true;
 const bellAudio    = new Audio('bell.mp3');
 bellAudio.volume   = 0.1;
 const boomAudio    = new Audio('boom.ogg');
-const ALL_AUDIO    = [screamAudio, hummingAudio, bellAudio, boomAudio];
+const deathAudio   = new Audio('tot.ogg');
+const ALL_AUDIO    = [screamAudio, hummingAudio, bellAudio, boomAudio, deathAudio];
+
+function playDeath() {
+  deathAudio.currentTime = 0;
+  deathAudio.play().catch(() => {});
+}
 
 function playBoom() {
   boomAudio.currentTime = 0;
@@ -964,7 +970,10 @@ function arriveAt(idx) {
 
   const akte = hasAkte(loc);
   after(ARRIVE_PAUSE, () => {
-    if (isLast) freezeLlama(true);   // letzter Satz: X-Auge, Lama erstarrt
+    if (isLast) {                    // letzter Satz: X-Auge, Lama erstarrt
+      freezeLlama(true);
+      playDeath();
+    }
   });
   after(ARRIVE_PAUSE, () => speak(loc.say, () => {
     if (akte) busted(loc, next);
