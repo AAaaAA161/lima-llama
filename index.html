@@ -409,8 +409,7 @@ let bubbleTimer  = 0;
 
 let scrX = 0, scrY = 0;
 
-let showCross = false;
-let crossX = 0, crossY = 0;
+let showGrave = false;
 
 // JS-driven fade (keeps llama, shadow and bubble perfectly in sync)
 let llamaFadeAlpha = 1;
@@ -598,14 +597,12 @@ function onArrival() {
   map.flyTo({ center: [loc.lng, loc.lat], zoom: 5, duration: 1000, essential: true });
 
   if (isLast) {
-    // Finale: bell toll, llama fades, cross appears, 5s pause, restart
+    // Finale: bell toll, llama fades, gravestone appears, 5s pause, restart
     playBell();
 
-    // After bubble types in (~1.5s): start JS-driven fade + show cross
+    // After bubble types in (~1.5s): start JS-driven fade + show gravestone
     after(1500, () => {
-      crossX = scrX;
-      crossY = scrY;
-      showCross     = true;
+      showGrave     = true;
       fadeOutActive = true;
       fadeInActive  = false;
       fadeStartTime = clock;
@@ -613,7 +610,7 @@ function onArrival() {
 
     // After fade (1s) + 5s pause → restart at first location
     after(1500 + FADE_OUT_DUR + 5000, () => {
-      showCross      = false;
+      showGrave      = false;
       phase          = PHASE.IDLE;
       bubbleText     = '';
       locIdx         = 0;
@@ -637,98 +634,95 @@ function onArrival() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// GRAVE CROSS
+// GRABSTEIN
 // ═══════════════════════════════════════════════════════════════
-function drawGraveCross(ctx, cx, cy, alpha) {
+function drawGravestone(ctx, cx, cy, alpha) {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  const vw   = 13;          // vertical bar width
-  const hh   = 12;          // horizontal bar height
-  const top  = cy - 60;     // top of vertical bar
-  const bot  = cy + 2;      // bottom of vertical bar
-  const armL = cx - 30;     // left end of crossbar
-  const armR = cx + 30;     // right end of crossbar
-  const armT = cy - 38;     // top of crossbar
-  const armB = armT + hh;
-  const r    = 5;            // corner radius
+  const w     = 52;              // Breite des Steins
+  const h     = 68;              // Höhe bis zum Scheitel
+  const left  = cx - w / 2;
+  const right = cx + w / 2;
+  const bot   = cy + 2;          // Unterkante (steht auf dem Ort)
+  const archR = w / 2;           // runder Abschluss oben
+  const archY = bot - h + archR; // Mittelpunkt des Bogens
 
-  function rrect(x, y, w, h) {
+  // Erdhügel
+  const dirtG = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, 34);
+  dirtG.addColorStop(0, '#8a7a5a');
+  dirtG.addColorStop(1, '#4e4330');
+  ctx.fillStyle = dirtG;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 6, 36, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Schlagschatten
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 12, cy + 10, 30, 6, -0.12, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Steinform: Rechteck mit Rundbogen
+  function stonePath() {
     ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y,     x + w, y + r,     r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-    ctx.lineTo(x + r, y + h);
-    ctx.arcTo(x, y + h, x, y + h - r, r);
-    ctx.lineTo(x, y + r);
-    ctx.arcTo(x, y, x + r, y, r);
+    ctx.moveTo(left, bot);
+    ctx.lineTo(left, archY);
+    ctx.arc(cx, archY, archR, Math.PI, 0);
+    ctx.lineTo(right, bot);
     ctx.closePath();
   }
 
-  // Dirt mound
-  const dirtG = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, 30);
-  dirtG.addColorStop(0, '#b8884a');
-  dirtG.addColorStop(1, '#6b4e22');
-  ctx.fillStyle = dirtG;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 7, 30, 11, 0, 0, Math.PI * 2);
+  // Granit: links hell, rechts dunkel (wirkt gewölbt)
+  const stoneG = ctx.createLinearGradient(left, 0, right, 0);
+  stoneG.addColorStop(0,    '#8c9096');
+  stoneG.addColorStop(0.25, '#c9ccd0');
+  stoneG.addColorStop(0.6,  '#a4a8ae');
+  stoneG.addColorStop(1,    '#6a6e74');
+
+  stonePath();
+  ctx.fillStyle = stoneG;
   ctx.fill();
-
-  // Cast shadow (darkened ellipse, offset)
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
-  ctx.beginPath();
-  ctx.ellipse(cx + 8, cy + 14, 24, 6, -0.15, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Wood gradient (left→right gives cylindrical look on vertical bar)
-  const woodG = ctx.createLinearGradient(cx - vw / 2, 0, cx + vw / 2, 0);
-  woodG.addColorStop(0,    '#5a2a08');
-  woodG.addColorStop(0.18, '#a04e1a');
-  woodG.addColorStop(0.45, '#d07838');
-  woodG.addColorStop(0.75, '#9a4c18');
-  woodG.addColorStop(1,    '#4a2005');
-
-  // Horizontal bar uses top→bottom gradient
-  const hGrad = ctx.createLinearGradient(0, armT, 0, armB);
-  hGrad.addColorStop(0,   '#c87030');
-  hGrad.addColorStop(0.5, '#a05020');
-  hGrad.addColorStop(1,   '#5c2a08');
-
-  // Draw vertical bar
-  rrect(cx - vw / 2, top, vw, bot - top);
-  ctx.fillStyle   = woodG;
-  ctx.fill();
-  ctx.strokeStyle = '#2e1204';
+  ctx.strokeStyle = '#3d4045';
   ctx.lineWidth   = 1.5;
   ctx.stroke();
 
-  // Draw horizontal bar (on top)
-  rrect(armL, armT, armR - armL, hh);
-  ctx.fillStyle   = hGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#2e1204';
-  ctx.lineWidth   = 1.5;
-  ctx.stroke();
-
-  // Left-edge highlight on vertical bar → gives 3-D depth
-  ctx.strokeStyle = 'rgba(255,195,110,0.38)';
+  // Lichtkante am Bogen
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
   ctx.lineWidth   = 2;
-  ctx.lineCap     = 'round';
   ctx.beginPath();
-  ctx.moveTo(cx - vw / 2 + 3, bot - 5);
-  ctx.lineTo(cx - vw / 2 + 3, armB + 1);
-  ctx.moveTo(cx - vw / 2 + 3, armT - 1);
-  ctx.lineTo(cx - vw / 2 + 3, top + 7);
+  ctx.arc(cx, archY, archR - 3, Math.PI * 1.05, Math.PI * 1.6);
   ctx.stroke();
 
-  // Top highlight on horizontal bar
-  ctx.beginPath();
-  ctx.moveTo(armL + 5, armT + 3);
-  ctx.lineTo(armR - 5, armT + 3);
-  ctx.stroke();
+  // Sockel
+  const baseH = 7;
+  const baseG = ctx.createLinearGradient(0, bot - baseH, 0, bot);
+  baseG.addColorStop(0, '#7d8187');
+  baseG.addColorStop(1, '#55595e');
+  ctx.fillStyle = baseG;
+  ctx.fillRect(left - 5, bot - baseH, w + 10, baseH);
+  ctx.strokeStyle = '#3d4045';
+  ctx.lineWidth   = 1.2;
+  ctx.strokeRect(left - 5, bot - baseH, w + 10, baseH);
+
+  // Gravur: Lebensdaten, eingemeißelt (helle Kante unter dunkler Schrift)
+  const y1 = archY + 4;
+  const y2 = archY + 22;
+  ctx.font         = 'bold 13px Georgia, "Times New Roman", serif';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  function engrave(text, y) {
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText(text, cx + 0.6, y + 0.8);
+    ctx.fillStyle = '#34373b';
+    ctx.fillText(text, cx, y);
+  }
+  engrave(String(tlMin), y1);
+  // kurzer Strich zwischen den Jahren
+  ctx.fillStyle = '#34373b';
+  ctx.fillRect(cx - 6, (y1 + y2) / 2 - 0.75, 12, 1.5);
+  engrave(String(tlMax), y2);
 
   ctx.restore();
 }
@@ -776,7 +770,7 @@ function render(now) {
   } else if (phase === PHASE.SCREAMING) {
     const loc = locations[locIdx];
     [scrX, scrY] = project(loc.lng, loc.lat);
-    shake = showCross ? 0 : 4;  // no shake once cross is showing
+    shake = showGrave ? 0 : 4;  // no shake once gravestone is showing
     bubbleTimer += dt;
     if (bubbleTimer > 80 && bubbleText.length < bubbleTgt.length) {
       bubbleText += bubbleTgt[bubbleText.length];
@@ -800,10 +794,10 @@ function render(now) {
   }
   llamaEl.style.opacity = llamaFadeAlpha;
 
-  // Grabkreuz im Finale
-  if (showCross) {
+  // Grabstein im Finale
+  if (showGrave) {
     const [cx, cy] = project(locations[locIdx].lng, locations[locIdx].lat);
-    drawGraveCross(ctx, cx, cy, 1 - llamaFadeAlpha);
+    drawGravestone(ctx, cx, cy, 1 - llamaFadeAlpha);
   }
 
   // Random shake offset

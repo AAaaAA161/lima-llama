@@ -1,6 +1,6 @@
 # Lima Llama 🦙
 
-Eine Weltkarte, auf der ein Lama zwischen Orten hin- und herhüpft, an denen Günther verhaftet, des Landes verwiesen oder auf andere Weise aktenkundig wurde. An jeder Station schreit das Lama die Jahreszahl. Im Finale läutet eine Glocke, das Lama verblasst, ein Grabkreuz erscheint, danach beginnt die Runde von vorn.
+Eine Weltkarte, auf der ein Lama zwischen Orten hin- und herhüpft, an denen Günther verhaftet, des Landes verwiesen oder auf andere Weise aktenkundig wurde. An jeder Station schreit das Lama die Jahreszahl. Im Finale läutet eine Glocke, das Lama verblasst, ein Grabstein mit den Lebensdaten erscheint, danach beginnt die Runde von vorn.
 
 ## Starten
 
