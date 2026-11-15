@@ -900,7 +900,7 @@ function addTrailLayer() {
     paint: {
       'line-color': '#B71C1C',
       'line-width': 2.5,
-      'line-opacity': 0.75,
+      'line-opacity': TRAIL_OPACITY,
       'line-dasharray': [1.5, 1.5]
     }
   });
@@ -1021,6 +1021,18 @@ function onArrival() {
 }
 
 // ── Finale: Glocke, Lama verblasst, Grabstein, Neustart ───────
+// Ausfaden am Ende der Runde (Fluglinien + Grabstein)
+const END_FADE_DUR   = 2000;
+const TRAIL_OPACITY  = 0.75;
+let endFadeStart     = null;
+let trailOpacityNow  = 1;
+
+function setTrailOpacity(k) {
+  if (Math.abs(k - trailOpacityNow) < 0.005) return;
+  trailOpacityNow = k;
+  if (map.getLayer('trail')) map.setPaintProperty('trail', 'line-opacity', TRAIL_OPACITY * k);
+}
+
 function finale() {
   playBell();
 
@@ -1031,9 +1043,16 @@ function finale() {
     fadeStartTime = clock;
   });
 
-  // Nach Ausblenden (1s) + 5s Pause → Neustart an der ersten Station
+  // Nach Ausblenden (1s) + 5s Pause: Fluglinien, Grabstein und Ortsschild
+  // langsam ausfaden …
   after(800 + FADE_OUT_DUR + 5000, () => {
     hideSign();
+    endFadeStart = clock;
+  });
+
+  // … danach Neustart an der ersten Station
+  after(800 + FADE_OUT_DUR + 5000 + END_FADE_DUR, () => {
+    endFadeStart   = null;
     showGrave      = false;
     phase          = PHASE.IDLE;
     bubbleOn       = false;
@@ -1044,6 +1063,7 @@ function finale() {
     trailDone      = [];
     routeCount     = {};
     setTrail();
+    setTrailOpacity(1);
     const first = locations[0];
     map.flyTo({ center: [first.lng, first.lat], zoom: 5, duration: 1200, essential: true });
     after(1200, () => {
@@ -1352,10 +1372,14 @@ function render(now) {
     if (llamaFadeAlpha === 1) fadeInActive = false;
   }
 
+  // Ausfaden am Ende der Runde
+  const endFadeFactor = endFadeStart === null ? 1 : 1 - smooth(clamp01((clock - endFadeStart) / END_FADE_DUR));
+  if (endFadeStart !== null) setTrailOpacity(endFadeFactor);
+
   // Grabstein im Finale
   if (showGrave) {
     const [cx, cy] = project(locations[locIdx].lng, locations[locIdx].lat);
-    drawGravestone(ctx, cx, cy, 1 - llamaFadeAlpha);
+    drawGravestone(ctx, cx, cy, (1 - llamaFadeAlpha) * endFadeFactor);
   }
 
   // Lama positionieren: bewegtes GIF oder eingefrorenes Standbild
