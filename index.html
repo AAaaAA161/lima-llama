@@ -1199,91 +1199,124 @@ bustedEl.addEventListener('click', () => { if (bustedFinish) bustedFinish(); });
 // ═══════════════════════════════════════════════════════════════
 function drawGravestone(ctx, cx, cy, alpha) {
   if (alpha <= 0) return;
+  // Im Stil des Lama-GIFs: weiche Aquarell-Flächen in Creme, dünne warme
+  // braune Konturen statt Schwarz, Akzente aus der Satteldecke.
+  const C = {
+    line:   '#a07060',   // Kontur (wie die Umrisse des Lamas)
+    text:   '#8f5a52',
+    stone:  '#f1ebe0',   // Creme wie das Fell
+    shade:  '#ddd2c6',
+    grass:  '#9fc79a',
+    grassD: '#7fae93',
+    orange: '#f89838', teal: '#68a8a8', pink: '#f87888', yellow: '#f8e058'
+  };
   ctx.save();
   ctx.globalAlpha = alpha;
+  ctx.lineJoin = 'round';
+  ctx.lineCap  = 'round';
 
-  const w     = 52;              // Breite des Steins
-  const h     = 68;              // Höhe bis zum Scheitel
-  const left  = cx - w / 2;
-  const right = cx + w / 2;
-  const bot   = cy + 2;          // Unterkante (steht auf dem Ort)
-  const archR = w / 2;           // runder Abschluss oben
-  const archY = bot - h + archR; // Mittelpunkt des Bogens
+  const w = 50, h = 64;
+  const bot = cy + 2;
 
-  // Erdhügel
-  const dirtG = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, 34);
-  dirtG.addColorStop(0, '#8a7a5a');
-  dirtG.addColorStop(1, '#4e4330');
-  ctx.fillStyle = dirtG;
+  // Weicher Schatten
+  ctx.fillStyle = 'rgba(152, 88, 88, 0.16)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 6, 36, 11, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + 6, bot + 4, 34, 7, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Schlagschatten
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  // Grashügel
+  ctx.fillStyle = C.grass;
+  ctx.strokeStyle = C.line;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.ellipse(cx + 12, cy + 10, 30, 6, -0.12, 0, Math.PI * 2);
+  ctx.ellipse(cx, bot + 1, 34, 8, 0, Math.PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Stein: leicht schief, rund und etwas bauchig
+  ctx.save();
+  ctx.translate(cx, bot);
+  ctx.rotate(-0.06);
+  const l = -w / 2, r = w / 2, top = -h, archR = w / 2;
+  ctx.beginPath();
+  ctx.moveTo(l + 2, 0);
+  ctx.quadraticCurveTo(l - 2, top + archR + 10, l, top + archR);
+  ctx.arc(0, top + archR, archR, Math.PI, 0);
+  ctx.quadraticCurveTo(r + 2, top + archR + 10, r - 2, 0);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(l, top, r, 0);
+  g.addColorStop(0,   C.stone);
+  g.addColorStop(0.6, C.stone);
+  g.addColorStop(1,   C.shade);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = C.line;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Lichtfleck wie bei Aquarell
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.beginPath();
+  ctx.ellipse(l + 12, top + archR - 4, 5, 9, -0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  // Steinform: Rechteck mit Rundbogen
-  function stonePath() {
+  // Bommel-Girlande wie an der Satteldecke
+  const bob = [[-14, C.orange], [0, C.teal], [14, C.pink]];
+  ctx.strokeStyle = C.line;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-20, top + 14);
+  ctx.quadraticCurveTo(0, top + 22, 20, top + 14);
+  ctx.stroke();
+  bob.forEach(([x, col]) => {
+    const y = top + 14 + 8 * (1 - (x / 20) ** 2) + 4;
+    ctx.fillStyle = col;
     ctx.beginPath();
-    ctx.moveTo(left, bot);
-    ctx.lineTo(left, archY);
-    ctx.arc(cx, archY, archR, Math.PI, 0);
-    ctx.lineTo(right, bot);
-    ctx.closePath();
-  }
+    ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+  });
 
-  // Granit: links hell, rechts dunkel (wirkt gewölbt)
-  const stoneG = ctx.createLinearGradient(left, 0, right, 0);
-  stoneG.addColorStop(0,    '#8c9096');
-  stoneG.addColorStop(0.25, '#c9ccd0');
-  stoneG.addColorStop(0.6,  '#a4a8ae');
-  stoneG.addColorStop(1,    '#6a6e74');
-
-  stonePath();
-  ctx.fillStyle = stoneG;
-  ctx.fill();
-  ctx.strokeStyle = '#3d4045';
-  ctx.lineWidth   = 1.5;
-  ctx.stroke();
-
-  // Lichtkante am Bogen
-  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-  ctx.lineWidth   = 2;
-  ctx.beginPath();
-  ctx.arc(cx, archY, archR - 3, Math.PI * 1.05, Math.PI * 1.6);
-  ctx.stroke();
-
-  // Sockel
-  const baseH = 7;
-  const baseG = ctx.createLinearGradient(0, bot - baseH, 0, bot);
-  baseG.addColorStop(0, '#7d8187');
-  baseG.addColorStop(1, '#55595e');
-  ctx.fillStyle = baseG;
-  ctx.fillRect(left - 5, bot - baseH, w + 10, baseH);
-  ctx.strokeStyle = '#3d4045';
-  ctx.lineWidth   = 1.2;
-  ctx.strokeRect(left - 5, bot - baseH, w + 10, baseH);
-
-  // Gravur: Lebensdaten, eingemeißelt (helle Kante unter dunkler Schrift)
-  const y1 = archY + 4;
-  const y2 = archY + 22;
-  ctx.font         = 'bold 13px Georgia, "Times New Roman", serif';
+  // Lebensdaten
+  ctx.fillStyle    = C.text;
+  ctx.font         = 'bold 12px "Chalkboard SE", "Comic Neue", "Trebuchet MS", sans-serif';
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
-  function engrave(text, y) {
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.fillText(text, cx + 0.6, y + 0.8);
-    ctx.fillStyle = '#34373b';
-    ctx.fillText(text, cx, y);
+  ctx.fillText(String(tlMin), 0, top + archR + 8);
+  ctx.fillRect(-5, top + archR + 17, 10, 1.5);
+  ctx.fillText(String(tlMax), 0, top + archR + 26);
+  ctx.restore();
+
+  // Grasbüschel
+  ctx.strokeStyle = C.grassD;
+  ctx.lineWidth = 1.6;
+  [[-28, 0], [-22, 1], [24, 0], [30, 1]].forEach(([x, y]) => {
+    ctx.beginPath();
+    ctx.moveTo(cx + x - 3, bot + y);     ctx.lineTo(cx + x - 4, bot + y - 6);
+    ctx.moveTo(cx + x,     bot + y);     ctx.lineTo(cx + x,     bot + y - 8);
+    ctx.moveTo(cx + x + 3, bot + y);     ctx.lineTo(cx + x + 4, bot + y - 6);
+    ctx.stroke();
+  });
+
+  // Kleine Blume vor dem Stein
+  const fx = cx + 20, fy = bot - 4;
+  ctx.strokeStyle = C.grassD;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(fx, bot + 2);
+  ctx.quadraticCurveTo(fx - 2, fy + 4, fx, fy);
+  ctx.stroke();
+  ctx.fillStyle = C.pink;
+  for (let k = 0; k < 5; k++) {
+    const a = k * 2 * Math.PI / 5;
+    ctx.beginPath();
+    ctx.arc(fx + Math.cos(a) * 3.2, fy + Math.sin(a) * 3.2, 2.4, 0, Math.PI * 2);
+    ctx.fill();
   }
-  engrave(String(tlMin), y1);
-  // kurzer Strich zwischen den Jahren
-  ctx.fillStyle = '#34373b';
-  ctx.fillRect(cx - 6, (y1 + y2) / 2 - 0.75, 12, 1.5);
-  engrave(String(tlMax), y2);
+  ctx.fillStyle = C.yellow;
+  ctx.beginPath();
+  ctx.arc(fx, fy, 2, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
