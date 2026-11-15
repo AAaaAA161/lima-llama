@@ -38,7 +38,7 @@
     :root { --sign-blue: #1f4e9c; --sign-font: "Arial Narrow", "Helvetica Neue", Arial, sans-serif; }
     #label {
       position: absolute;
-      bottom: 150px; left: 50%;
+      bottom: 112px; left: 50%;
       transform: translate(-50%, 10px);
       background: #fff;
       color: #111;
@@ -210,71 +210,57 @@
     }
     #fullscreen-btn:hover { background: #e8eef8; }
 
-    /* Zeitleiste
-       Aufbau von unten: Jahreszahlen (untere Reihe) · Strahl · Jahreszahlen
-       (obere Reihe) · laufende Jahresmarke */
+    /* Zeitleiste – schlicht, in der Typografie der Akte.
+       Zeitgetreu: Abstände proportional zu den Jahren, Stationen im selben
+       Jahr teilen sich einen Strich. Fast über die ganze Breite, damit
+       eng liegende Jahre (1975/76, 1983/84) Platz haben. */
     #timeline {
       position: absolute;
-      left: 50%; bottom: 30px;   /* Abstand zu Mapbox-Logo und Attribution */
-      transform: translateX(-50%);
-      width: min(72vw, 960px);
-      height: 104px;
+      left: 40px; right: 40px;
+      bottom: 34px;               /* über Mapbox-Logo und Attribution */
+      height: 58px;
+      background: rgba(250, 247, 238, 0.86);
+      border: 1px solid rgba(42, 36, 24, 0.22);
+      border-radius: 3px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
       z-index: 20;
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.6s;
+      font-family: 'Courier New', monospace;
+      color: #2a2418;
     }
     #timeline.show { opacity: 1; }
+    #tl-inner { position: absolute; left: 34px; right: 34px; top: 0; bottom: 0; }
     #tl-track {
-      position: absolute; left: 0; right: 0; bottom: 34px;
-      height: 8px; border-radius: 4px;
-      background: rgba(255,255,255,0.85);
-      box-shadow: 0 0 0 1.5px rgba(10,10,30,0.55), 0 2px 6px rgba(0,0,0,0.3);
+      position: absolute; left: 0; right: 0; top: 28px;
+      height: 2px;
+      background: #2a2418;
     }
     #tl-fill {
-      position: absolute; left: 0; top: 0; bottom: 0;
-      width: 0; border-radius: 4px;
+      position: absolute; left: 0; top: -0.5px;
+      height: 3px; width: 0;
       background: #B71C1C;
     }
     .tl-tick {
-      position: absolute; bottom: 31px;
-      width: 14px; height: 14px; margin-left: -7px;
-      border-radius: 50%;
-      background: #fff; border: 2.5px solid rgba(10,10,30,0.75);
-      transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+      position: absolute; top: 24px;
+      width: 2px; height: 10px; margin-left: -1px;
+      background: #2a2418;
+      transition: background 0.3s, height 0.3s, top 0.3s, width 0.3s, margin-left 0.3s;
     }
     .tl-tick.passed  { background: #B71C1C; }
-    .tl-tick.current {
-      background: #fff; border-color: #B71C1C; border-width: 4px;
-      transform: scale(1.5);
-      box-shadow: 0 0 0 4px rgba(183,28,28,0.25), 0 0 12px rgba(183,28,28,0.6);
-      z-index: 2;
-    }
+    .tl-tick.current { background: #B71C1C; top: 19px; height: 20px; width: 3px; margin-left: -1.5px; }
     .tl-year {
       position: absolute;
       transform: translateX(-50%);
-      font: bold 14px var(--sign-font);
-      color: #1a1a1a;
-      text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff;
-      transition: color 0.3s, font-size 0.3s;
-      white-space: nowrap;
-    }
-    .tl-year.below { bottom: 8px; }
-    .tl-year.above { bottom: 50px; }
-    .tl-year.current { color: #B71C1C; font-size: 17px; }
-    #tl-marker {
-      position: absolute; bottom: 70px;
-      transform: translateX(-50%);
-      background: #fff; color: #111;
-      font: bold 22px var(--sign-font);
+      font-size: 12px;
       letter-spacing: 0.5px;
-      padding: 1px 12px;
-      border-radius: 3px;
-      border-top: 4px solid var(--sign-blue);
-      border-bottom: 4px solid var(--sign-blue);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-      z-index: 3;
+      white-space: nowrap;
+      transition: color 0.3s;
     }
+    .tl-year.below { top: 38px; }
+    .tl-year.above { top: 6px; }
+    .tl-year.current { color: #B71C1C; font-weight: bold; }
 
     /* Kiosk-Modus (?kiosk) */
     body.kiosk, body.kiosk * { cursor: none !important; }
@@ -298,10 +284,11 @@
 </div>
 <div id="label"></div>
 <div id="timeline">
-  <div id="tl-track"><div id="tl-fill"></div></div>
-  <div id="tl-ticks"></div>
-  <div id="tl-years"></div>
-  <div id="tl-marker"></div>
+  <div id="tl-inner">
+    <div id="tl-track"><div id="tl-fill"></div></div>
+    <div id="tl-ticks"></div>
+    <div id="tl-years"></div>
+  </div>
 </div>
 <div id="title">Lima Llama 🦙</div>
 <button id="fullscreen-btn" title="Vollbild">⛶</button>
@@ -587,62 +574,70 @@ function pointOnPath(pts, t) {
 // ── Zeitleiste ────────────────────────────────────────────────
 const tlEl     = document.getElementById('timeline');
 const tlFill   = document.getElementById('tl-fill');
-const tlMarker = document.getElementById('tl-marker');
-let tlMin = 0, tlMax = 1, tlTicks = [], tlYears = {}, tlLastKey = '';
+const tlInner  = document.getElementById('tl-inner');
+let tlMin = 0, tlMax = 1, tlYears = [], tlTicks = {}, tlLabels = {}, tlLastKey = '';
 
 function yearOf(loc) { return parseInt(loc.year, 10) || 0; }
 function tlPos(year) { return (year - tlMin) / Math.max(1, tlMax - tlMin) * 100; }
 
 function buildTimeline() {
   const years = locations.map(yearOf);
-  tlMin = Math.min(...years);
-  tlMax = Math.max(...years);
+  tlMin   = Math.min(...years);
+  tlMax   = Math.max(...years);
+  tlYears = [...new Set(years)].sort((x, y) => x - y);   // ein Strich pro Jahr
 
-  const ticks = document.getElementById('tl-ticks');
-  tlTicks = years.map(y => {
-    const d = document.createElement('div');
-    d.className = 'tl-tick';
-    d.style.left = tlPos(y) + '%';
-    ticks.appendChild(d);
-    return d;
+  const ticks  = document.getElementById('tl-ticks');
+  const labels = document.getElementById('tl-years');
+  tlYears.forEach(y => {
+    const t = document.createElement('div');
+    t.className = 'tl-tick';
+    t.style.left = tlPos(y) + '%';
+    ticks.appendChild(t);
+    tlTicks[y] = t;
+
+    const l = document.createElement('div');
+    l.className = 'tl-year';
+    l.style.left = tlPos(y) + '%';
+    l.textContent = y;
+    labels.appendChild(l);
+    tlLabels[y] = l;
   });
+  layoutYearRows();
+}
 
-  // Jede Jahreszahl einmal. Liegen zwei zu dicht beieinander, kommt die
-  // zweite in die andere Reihe (unter bzw. über dem Strahl).
-  const box    = document.getElementById('tl-years');
-  const minGap = 46 / Math.max(1, tlEl.offsetWidth) * 100;   // ~46 px in %
-  const last   = { below: -Infinity, above: -Infinity };
-  [...new Set(years)].sort((x, y) => x - y).forEach(y => {
-    const pos = tlPos(y);
-    const row = pos - last.below >= minGap ? 'below'
-              : pos - last.above >= minGap ? 'above'
-              : 'below';
-    last[row] = pos;
-    const el = document.createElement('div');
-    el.className = 'tl-year ' + row;
-    el.style.left = pos + '%';
-    el.textContent = y;
-    box.appendChild(el);
-    tlYears[y] = el;
+// Jahreszahlen stehen unter dem Strahl. Liegt eine zu nah an der vorigen,
+// kommt sie über den Strahl. Neu berechnen, wenn sich die Breite ändert.
+function layoutYearRows() {
+  const width = tlInner.offsetWidth || 1;
+  const last  = { below: -Infinity, above: -Infinity };
+  tlYears.forEach(y => {
+    const px  = tlPos(y) / 100 * width;
+    const el  = tlLabels[y];
+    const gap = el.offsetWidth + 8;
+    const row = px - last.below >= gap ? 'below'
+              : px - last.above >= gap ? 'above'
+              : (px - last.above > px - last.below ? 'above' : 'below');  // sehr schmal: Reihe mit mehr Platz
+    last[row] = px;
+    el.classList.toggle('below', row === 'below');
+    el.classList.toggle('above', row === 'above');
   });
 }
+window.addEventListener('resize', () => { if (tlYears.length) layoutYearRows(); });
 
 // year: aktuelle (ggf. gebrochene) Jahreszahl, idx: zuletzt erreichte Station,
 // atStation: Lama steht gerade an Station idx → hervorheben
 function updateTimeline(year, idx, atStation) {
-  const p = tlPos(year) + '%';
-  tlFill.style.width   = p;
-  tlMarker.style.left  = p;
-  tlMarker.textContent = Math.round(year);
+  tlFill.style.width = tlPos(year) + '%';
   const key = idx + ':' + (atStation ? 1 : 0);
   if (key === tlLastKey) return;
   tlLastKey = key;
-  const curYear = atStation ? yearOf(locations[idx]) : null;
-  tlTicks.forEach((d, i) => {
-    d.classList.toggle('passed',  i <= idx);
-    d.classList.toggle('current', atStation && i === idx);
+  const reached = yearOf(locations[idx]);
+  tlYears.forEach(y => {
+    const cur = atStation && y === reached;
+    tlTicks[y].classList.toggle('passed', y <= reached);
+    tlTicks[y].classList.toggle('current', cur);
+    tlLabels[y].classList.toggle('current', cur);
   });
-  Object.entries(tlYears).forEach(([y, el]) => el.classList.toggle('current', +y === curYear));
 }
 
 // ── Routen-Spur ───────────────────────────────────────────────
