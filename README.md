@@ -14,6 +14,22 @@ Danach http://localhost:8000 öffnen, warten, bis die Karte geladen ist, und kli
 
 Alternativ: GitHub Pages für das Repo aktivieren (Settings → Pages → Branch `main`).
 
+## Kiosk-Modus (Ausstellung)
+
+Mit `?kiosk` in der URL startet die Animation ohne Klick, sobald alles geladen ist. Mauszeiger und Vollbild-Knopf sind dann ausgeblendet:
+
+```
+http://localhost:8000/?kiosk
+```
+
+Browser spielen Ton ohne Klick normalerweise nicht ab. Für einen Ausstellungsrechner Chrome so starten (macOS):
+
+```bash
+open -a "Google Chrome" --args --kiosk --autoplay-policy=no-user-gesture-required "http://localhost:8000/?kiosk"
+```
+
+Damit der Bildschirm nicht ausgeht, fordert die Seite einen Wake Lock an. Er funktioniert nur über `https://` oder `localhost`.
+
 ## Stationen bearbeiten
 
 `locations.json` enthält eine Liste von Stationen in Reihenfolge:
