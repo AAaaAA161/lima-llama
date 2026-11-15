@@ -1,12 +1,155 @@
 [
-  { "name": "Salzburg, Österreich",            "lng":   13.0550, "lat":  47.8095, "year": "1948", "reason": "" },
-  { "name": "Braunau am Inn, Österreich",      "lng":   13.0333, "lat":  48.2500, "year": "1975", "reason": "" },
-  { "name": "Lübeck, Deutschland",             "lng":   10.6866, "lat":  53.8655, "year": "1975", "reason": "" },
-  { "name": "Salzburg, Österreich",            "lng":   13.0550, "lat":  47.8095, "year": "1976", "reason": "" },
-  { "name": "Lima, Peru",                      "lng":  -77.0428, "lat": -12.0464, "year": "1976", "reason": "" },
-  { "name": "Mexico City, Mexiko",             "lng":  -99.1332, "lat":  19.4326, "year": "1983", "reason": "" },
-  { "name": "Ried im Innkreis, Österreich",    "lng":   13.4833, "lat":  48.2100, "year": "1984", "reason": "" },
-  { "name": "Manila, Philippinen",             "lng":  120.9842, "lat":  14.5995, "year": "1991", "reason": "" },
-  { "name": "Salzburg, Österreich",            "lng":   13.0550, "lat":  47.8095, "year": "1991", "reason": "" },
-  { "name": "Salzburg, Österreich",            "lng":   13.0550, "lat":  47.8095, "year": "2019", "reason": "" }
+  {
+    "name": "Salzburg, Österreich",
+    "lng": 13.055,
+    "lat": 47.8095,
+    "year": "1948",
+    "reason": "",
+    "thought": "",
+    "say": "[Satz in Salzburg, 1948]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Braunau am Inn, Österreich",
+    "lng": 13.0333,
+    "lat": 48.25,
+    "year": "1975",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Braunau am Inn]",
+    "say": "[Satz in Braunau am Inn, 1975]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Lübeck, Deutschland",
+    "lng": 10.6866,
+    "lat": 53.8655,
+    "year": "1975",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Lübeck]",
+    "say": "[Satz in Lübeck, 1975]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Salzburg, Österreich",
+    "lng": 13.055,
+    "lat": 47.8095,
+    "year": "1976",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Salzburg]",
+    "say": "[Satz in Salzburg, 1976]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Lima, Peru",
+    "lng": -77.0428,
+    "lat": -12.0464,
+    "year": "1976",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Lima]",
+    "say": "[Satz in Lima, 1976]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Mexico City, Mexiko",
+    "lng": -99.1332,
+    "lat": 19.4326,
+    "year": "1983",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Mexico City]",
+    "say": "[Satz in Mexico City, 1983]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Ried im Innkreis, Österreich",
+    "lng": 13.4833,
+    "lat": 48.21,
+    "year": "1984",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Ried im Innkreis]",
+    "say": "[Satz in Ried im Innkreis, 1984]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Manila, Philippinen",
+    "lng": 120.9842,
+    "lat": 14.5995,
+    "year": "1991",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Manila]",
+    "say": "[Satz in Manila, 1991]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Salzburg, Österreich",
+    "lng": 13.055,
+    "lat": 47.8095,
+    "year": "1991",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Salzburg]",
+    "say": "[Satz in Salzburg, 1991]",
+    "akte": [
+      {
+        "datum": "[TT.MM.JJJJ]",
+        "behoerde": "[Gericht/Behörde]",
+        "vorwurf": "[Vorwurf]"
+      }
+    ]
+  },
+  {
+    "name": "Salzburg, Österreich",
+    "lng": 13.055,
+    "lat": 47.8095,
+    "year": "2019",
+    "reason": "",
+    "thought": "[Gedanke auf dem Weg nach Salzburg]",
+    "say": "[Satz in Salzburg, 2019]"
+  }
 ]
