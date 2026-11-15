@@ -6,13 +6,9 @@
     "year": "1948",
     "reason": "",
     "thought": "",
-    "say": "[Satz in Salzburg, 1948]",
+    "say": "Let's fucking gooooo!",
     "akte": [
-      {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
-      }
+      
     ]
   },
   {
@@ -21,13 +17,13 @@
     "lat": 48.25,
     "year": "1975",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Braunau am Inn]",
-    "say": "[Satz in Braunau am Inn, 1975]",
+    "thought": "Let's make a family!",
+    "say": "Oops...",
     "akte": [
       {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
+        "datum": "1975",
+        "behoerde": "Bezirksgericht Braunau am Inn",
+        "vorwurf": "Betrug, Urkundenfälschung"
       }
     ]
   },
@@ -37,13 +33,13 @@
     "lat": 53.8655,
     "year": "1975",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Lübeck]",
-    "say": "[Satz in Lübeck, 1975]",
+    "thought": "Let's make some money!",
+    "say": "Oops, I did it again!",
     "akte": [
       {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
+        "datum": "1975",
+        "behoerde": "Amtsgericht Lübeck",
+        "vorwurf": "Betrug, Urkundenfälschung"
       }
     ]
   },
@@ -53,13 +49,13 @@
     "lat": 47.8095,
     "year": "1976",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Salzburg]",
-    "say": "[Satz in Salzburg, 1976]",
+    "thought": "I wanna be a secret agent!",
+    "say": "Ich schau dir in die Augen, Kleines!",
     "akte": [
       {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
+        "datum": "1975",
+        "behoerde": "OLG Salzburg",
+        "vorwurf": "Betrug, Urkundenfälschung, unerlaubter Waffenbesitz"
       }
     ]
   },
@@ -69,13 +65,13 @@
     "lat": -12.0464,
     "year": "1976",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Lima]",
-    "say": "[Satz in Lima, 1976]",
+    "thought": "Starting a new life!",
+    "say": "Aahh, shit...",
     "akte": [
       {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
+        "datum": "1978",
+        "behoerde": "Lima, Peru",
+        "vorwurf": "Wird des Landes verwiesen aufgrund eines Haftbefehls in Österreich"
       }
     ]
   },
@@ -83,15 +79,15 @@
     "name": "Mexico City, Mexiko",
     "lng": -99.1332,
     "lat": 19.4326,
-    "year": "1983",
+    "year": "1978",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Mexico City]",
-    "say": "[Satz in Mexico City, 1983]",
+    "thought": "Nichts wie weg hier!",
+    "say": "Hola, amigos!",
     "akte": [
       {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
+        "datum": "1978",
+        "behoerde": "Mexico City, Mexiko",
+        "vorwurf": "Wird des Landes verwiesen aufgrund eines Haftbefehls in Österreich"
       }
     ]
   },
@@ -101,13 +97,13 @@
     "lat": 48.21,
     "year": "1984",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Ried im Innkreis]",
-    "say": "[Satz in Ried im Innkreis, 1984]",
+    "thought": "I'm back, bitches!",
+    "say": "Hey, das ist unfair!",
     "akte": [
       {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
+        "datum": "1984",
+        "behoerde": "Ried im Innkreis, Österreich",
+        "vorwurf": "Reststrafe aus 1975"
       }
     ]
   },
@@ -117,13 +113,13 @@
     "lat": 14.5995,
     "year": "1991",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Manila]",
-    "say": "[Satz in Manila, 1991]",
+    "thought": "I'm freeee to do whatever I want!",
+    "say": "Aber was mache ich eigentlich hier?",
     "akte": [
       {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
+        "datum": "1991",
+        "behoerde": "Österreichische Botschaft, Manila, Philippinen",
+        "vorwurf": "Keine gültigen Reisepapiere"
       }
     ]
   },
@@ -133,13 +129,13 @@
     "lat": 47.8095,
     "year": "1991",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Salzburg]",
-    "say": "[Satz in Salzburg, 1991]",
+    "thought": "Ab nach Hause",
+    "say": "Ich sollte mal sesshaft werden...",
     "akte": [
       {
-        "datum": "[TT.MM.JJJJ]",
-        "behoerde": "[Gericht/Behörde]",
-        "vorwurf": "[Vorwurf]"
+        "datum": "1991",
+        "behoerde": "???",
+        "vorwurf": "Betrug, Urkundenfälschung"
       }
     ]
   },
@@ -147,9 +143,27 @@
     "name": "Salzburg, Österreich",
     "lng": 13.055,
     "lat": 47.8095,
+    "year": "2015",
+    "reason": "",
+    "thought": "Mir geht es nicht so gut, ich sollte mal zum Arzt gehen",
+    "say": "Fuck... Krebs?"
+  },
+  {
+    "name": "Salzburg, Österreich",
+    "lng": 13.055,
+    "lat": 47.8095,
+    "year": "2017",
+    "reason": "",
+    "thought": "Einmal könnte ich schon noch...",
+  "say": "Hey, sweetheart. Ich war mal Professor in Harvard, weißt du?"
+  },
+  {
+    "name": "Salzburg, Österreich",
+    "lng": 13.055,
+    "lat": 47.8095,
     "year": "2019",
     "reason": "",
-    "thought": "[Gedanke auf dem Weg nach Salzburg]",
-    "say": "[Satz in Salzburg, 2019]"
+    "thought": "Eine rauch ich noch, dann ist Schluss",
+    "say": "Hngh"
   }
 ]

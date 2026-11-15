@@ -1011,9 +1011,22 @@ function drawGravestone(ctx, cx, cy, alpha) {
 let lastT = null;
 const MAX_FRAME_DT = 100; // nach Tab-Wechsel nicht vorspringen
 
-// Llama image dimensions (GIF: 378x498, displayed at height=130px)
+// Lama-Bild: Höhe fest, Breite aus dem tatsächlichen Seitenverhältnis
+// (GIF ist 127×200 px). Wird beim Laden des Bilds neu berechnet.
 const LLAMA_H  = 130;
-const LLAMA_W  = Math.round(130 * 378 / 498); // ≈ 99px
+let   LLAMA_W  = Math.round(LLAMA_H * 127 / 200);   // ≈ 83px
+function updateLlamaSize() {
+  if (llamaEl.naturalWidth && llamaEl.naturalHeight)
+    LLAMA_W = Math.round(LLAMA_H * llamaEl.naturalWidth / llamaEl.naturalHeight);
+}
+llamaEl.addEventListener('load', updateLlamaSize);
+updateLlamaSize();
+
+// Wo der Kopf im GIF sitzt (gemessen am ersten Frame, in Bildhöhen-Anteilen):
+// Ohrenspitzen bei 35 % der Höhe, Kopfmitte ca. 6 % der Höhe vor der
+// Bildmitte in Blickrichtung.
+const HEAD_TOP = 0.35;
+const HEAD_DX  = 0.06;
 
 function render(now) {
   requestAnimationFrame(render);
@@ -1137,14 +1150,16 @@ function wrapLines(c, text, maxW) {
 }
 
 // Box neben dem Kopf, in Blickrichtung, immer im sichtbaren Bereich
+// headX/headY: Punkt knapp über dem Kopf, auf den Spitze bzw. Kreise zeigen
 function bubbleBox(c, lines, lineH, padX, padY, gapAbove) {
   const textW = Math.max(...lines.map(l => c.measureText(l).width));
   const bw    = Math.ceil(textW) + padX * 2;
   const bh    = lines.length * lineH + padY * 2;
   const dir   = facingRight ? 1 : -1;
-  const headX = scrX + dir * 38;
-  const headY = scrY - LLAMA_H + 28;
-  let bx = facingRight ? headX + 6 : headX - 6 - bw;
+  const headX = scrX + dir * HEAD_DX * LLAMA_H;
+  const headY = scrY - LLAMA_H + HEAD_TOP * LLAMA_H;
+  // Blase beginnt knapp hinter dem Kopf und reicht in Blickrichtung
+  let bx = facingRight ? headX - 18 : headX + 18 - bw;
   let by = headY - bh - gapAbove;
   bx = Math.max(8, Math.min(window.innerWidth - bw - 8, bx));
   by = Math.max(8, by);
@@ -1158,12 +1173,15 @@ function drawSpeech(full, shown, alpha) {
   ctx.font = BUBBLE_FONT;
   const lineH = BUBBLE_LINE_H, padX = 14, padY = 10;
   const lines = wrapLines(ctx, full, BUBBLE_MAX_W);
-  const { bx, by, bw, bh, headX } = bubbleBox(ctx, lines, lineH, padX, padY, 18);
+  const { bx, by, bw, bh, headX, headY } = bubbleBox(ctx, lines, lineH, padX, padY, 14);
 
-  const r   = 8;
-  const tx1 = Math.max(bx + r + 2, Math.min(bx + bw - r - 16, headX - 7));
-  const tx2 = tx1 + 7, tx3 = tx1 + 14;
-  const ty  = by + bh, tipY = by + bh + 12;
+  // Spitze: Basis an der Unterkante nahe dem Kopf, Spitze zeigt auf den Kopf
+  const r     = 8;
+  const dir   = facingRight ? 1 : -1;
+  const baseX = Math.max(bx + r + 9, Math.min(bx + bw - r - 9, headX + dir * 10));
+  const tx1 = baseX - 7, tx3 = baseX + 7;
+  const ty  = by + bh;
+  const tx2 = headX, tipY = headY - 3;
 
   // Rounded rect + tail as one shape → one stroke, no seam
   ctx.beginPath();
@@ -1216,7 +1234,7 @@ function drawThought(text, alpha) {
   c.font = 'italic ' + BUBBLE_FONT;
   const lineH = BUBBLE_LINE_H, padX = 14, padY = 10;
   const lines = wrapLines(c, text, BUBBLE_MAX_W);
-  const { bx, by, bw, bh, headX, headY } = bubbleBox(c, lines, lineH, padX, padY, 46);
+  const { bx, by, bw, bh, headX, headY } = bubbleBox(c, lines, lineH, padX, padY, 40);
 
   // Wolkenrand aus Kreisen entlang des Rechtecks
   const R = 12, STEP = 17;
@@ -1234,7 +1252,7 @@ function drawThought(text, alpha) {
   // Kleine Kreise von der Wolke zum Kopf
   const sx = Math.max(bx + R, Math.min(bx + bw - R, headX));
   const sy = by + bh + R + 3;
-  const ex = headX, ey = headY - 4;
+  const ex = headX, ey = headY - 3;
   const dots = [[0.15, 6], [0.5, 4.5], [0.85, 3]].map(([k, r]) => [lerp(sx, ex, k), lerp(sy, ey, k), r]);
 
   c.strokeStyle = BUBBLE_EDGE;
