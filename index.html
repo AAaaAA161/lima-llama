@@ -285,12 +285,12 @@
 
 <div id="map"></div>
 <canvas id="overlay"></canvas>
-<img id="llama" class="llama-img" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lama">
+<img id="llama" class="llama-img" src="llama.gif" alt="Lama">
 <canvas id="llama-still"></canvas>
 <div id="busted"><div id="akte"></div></div>
 <div id="stamp">BUSTED</div>
 <div id="start-screen">
-  <img class="llama-img" src="https://media.tenor.com/s14QGGaouQoAAAAj/llama-balloon.gif" alt="Lima Llama">
+  <img class="llama-img" src="llama.gif" alt="Lima Llama">
   <h1>Lima Llama</h1>
   <p id="start-desc">LIMA LLAMA ist eine Weltkarte, auf der ein Lama zwischen Orten hin- und herhüpft, an denen Günther verhaftet, des Landes verwiesen oder auf andere Weise aktenkundig wurde.</p>
   <p id="start-hint">Lade Karte …</p>
@@ -437,8 +437,11 @@ const hummingAudio = new Audio('humming.m4a');
 hummingAudio.loop  = true;
 const bellAudio    = new Audio('bell.mp3');
 bellAudio.volume   = 0.1;
-const boomAudio    = new Audio('boom.ogg');
-const deathAudio   = new Audio('tot.ogg');
+// OGG spielen ältere Safari-Versionen nicht ab → dann die M4A-Fassung
+const OGG_OK       = !!new Audio().canPlayType('audio/ogg; codecs="vorbis"');
+const oggOrM4a     = name => name + (OGG_OK ? '.ogg' : '.m4a');
+const boomAudio    = new Audio(oggOrM4a('boom'));
+const deathAudio   = new Audio(oggOrM4a('tot'));
 const ALL_AUDIO    = [screamAudio, hummingAudio, bellAudio, boomAudio, deathAudio];
 
 function playDeath() {
@@ -1748,11 +1751,15 @@ async function preloadTiles() {
 
   const audioReady = Promise.all([...ALL_AUDIO.map(preloadAudio), prepareDeathFrame()]);
 
-  for (let i = 0; i < locations.length; i++) {
-    const loc = locations[i];
+  // Nur verschiedene Orte vorladen: Orte unter ROUTE_GROUP_KM Abstand
+  // (Salzburg, Braunau, Ried) liegen bei Zoom 5 auf denselben Kacheln
+  const unique = locations.filter((loc, i) =>
+    locations.slice(0, i).every(o => distKm(loc, o) >= ROUTE_GROUP_KM));
+  for (let i = 0; i < unique.length; i++) {
+    const loc = unique[i];
     map.jumpTo({ center: [loc.lng, loc.lat], zoom: 5 });
     await waitIdle();
-    progressFill.style.width = ((i + 1) / locations.length * 100) + '%';
+    progressFill.style.width = ((i + 1) / unique.length * 100) + '%';
   }
 
   // Return to first location

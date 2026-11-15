@@ -67,6 +67,7 @@ Der Token in `index.html` ist ein öffentlicher `pk.`-Token und im Browser ohneh
 
 - `index.html`: die gesamte Anwendung (Mapbox GL JS + Canvas-Overlay)
 - `locations.json`: Stationen
-- `humming.m4a`, `bell.mp3`, `boom.ogg`, `tot.ogg`, `166625__jzazvurek__childs-scream-8.wav`: Ton
+- `llama.gif`: das Lama
+- `humming.m4a`, `bell.mp3`, `boom.ogg`/`boom.m4a`, `tot.ogg`/`tot.m4a`, `166625__jzazvurek__childs-scream-8.wav`: Ton (M4A wird nur in Browsern ohne OGG-Unterstützung geladen, z. B. ältere Safari)
 
 Quellen der Medien: siehe [CREDITS.md](CREDITS.md). Lizenz des Codes: siehe [LICENSE](LICENSE).
